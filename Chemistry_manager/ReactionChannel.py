@@ -47,20 +47,7 @@ class Reaction:
     def calc_propensity(self) -> None:
         self.propensity = self.rate * self.calc_reactorial_count()
 
-
-if __name__ == '__main__':
-    print(Element.__module__)
-    # size = 10_000
-    # hydrogen = Element("Hydrogen", 'H', 2*size)
-    # oxygen = Element("Oxygen", 'O', size)
-    # water = Element("Water", 'H20', 0)
-    # hydration = Reaction("Hydration", 1, {hydrogen: 3, oxygen: 1}, {water: 1})
-    #
-    # from timeit import timeit
-    # runs = 100
-    # print(timeit(
-    #     stmt=f"for i in range({size}): hydration.update_propensity()",
-    #     setup="hydration",
-    #     globals={'hydration': hydration},
-    #     number=runs
-    # ) / runs)
+    @classmethod
+    def reset_class(cls):
+        cls.total_reactions = 0
+        cls.reaction_channels = []

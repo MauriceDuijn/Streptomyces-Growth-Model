@@ -13,6 +13,11 @@ class Element:
     def __repr__(self) -> str:
         return f"Element({self.name}, X({self.amount}))"
 
+    @classmethod
+    def reset_class(cls):
+        cls.total_elements = 0
+        cls.elemental_species = []
+
 
 if __name__ == '__main__':
     hydrogen = Element("Hydrogen", 'H', 2)

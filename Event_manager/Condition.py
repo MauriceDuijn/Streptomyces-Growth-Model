@@ -81,3 +81,10 @@ class Condition:
     def exponential(self):
         np.exp(self.alpha * self.cell_condition_factor_array[:, self.index],
                out=self.factor)
+
+    @classmethod
+    def reset_class(cls):
+        cls.total_conditions = 0
+        cls.condition_collection = []
+        cls.cell_condition_factor_array = Dynamic2DArray()
+

@@ -48,3 +48,8 @@ class Colony:
     @classmethod
     def get_all_neighbours(cls, cell: Cell):
         return cls.colonies[cell.colony_index].cell_grid.query(cell.center)
+
+    @classmethod
+    def reset_class(cls):
+        cls.total_colonies = 0
+        cls.colonies = []

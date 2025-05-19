@@ -113,3 +113,11 @@ class Event:
             cell_state = f"{Cell.cell_collection[cell_ind].state.name:^{state_max_length}}"
             event_propensities = ' '.join(f"{data:^{event_max_length}}" for data in line)
             print(cell_state, event_propensities)
+
+    @classmethod
+    def reset_class(cls):
+        cls.total_events = 0
+        cls.event_instances = []
+        cls.event_propensities_array = Dynamic2DArray()
+        cls.total_propensity = 0
+

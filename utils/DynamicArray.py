@@ -1,15 +1,16 @@
-import numpy
 import numpy as np
-from numpy import dtype, float64, zeros, array, ndarray, concatenate, ceil
 
 
 class DynamicArray:
     resize_factor: float = 2    # Expansion factor when resizing
 
-    def __init__(self, capacity: int = 1000, data_type: dtype = float64):
+    def __init__(self, capacity: int = 1000, data_type: np.dtype = np.float64):
         self.capacity: int = capacity
-        self.arr: ndarray = zeros(capacity, dtype=data_type)
+        self.arr: np.ndarray = np.zeros(capacity, dtype=data_type)
         self.row_size: int = 0
+
+    def __repr__(self):
+        return str(self.active)
 
     def __len__(self):
         return self.row_size
@@ -27,14 +28,14 @@ class DynamicArray:
         return self.active ** power
 
     @property
-    def active(self) -> ndarray[dtype]:
+    def active(self) -> np.ndarray:
         return self.arr[:self.row_size]
 
     @active.setter
     def active(self, value):
         self.arr[:self.row_size] = value
 
-    def update_index(self, index: int, data: dtype) -> None:
+    def update_index(self, index: int, data: np.dtype) -> None:
         self.arr[index] = data
 
     def sum(self):
@@ -50,8 +51,8 @@ class DynamicArray:
 
     def resize(self) -> None:
         """Smartly resize the array by allocating new capacity in one operation."""
-        new_capacity = int(ceil(self.capacity * self.resize_factor))
-        new_arr = zeros(new_capacity, dtype=self.arr.dtype)
+        new_capacity = int(np.ceil(self.capacity * self.resize_factor))
+        new_arr = np.zeros(new_capacity, dtype=self.arr.dtype)
         new_arr[:self.arr.size] = self.arr  # Copy existing data
         self.arr = new_arr
         self.capacity = new_capacity
@@ -64,15 +65,12 @@ class DynamicArray:
 
 
 class Dynamic2DArray(DynamicArray):
-    def __init__(self, capacity_rows=1000, capacity_columns=0, data_type=float64):
+    def __init__(self, capacity_rows=1000, capacity_columns=0, data_type=np.float64):
         super().__init__(capacity_rows, data_type)
         self.crows = capacity_rows
         self.ccols = capacity_columns
-        self.arr = zeros((capacity_rows, capacity_columns), dtype=data_type)
+        self.arr = np.zeros((capacity_rows, capacity_columns), dtype=data_type)
         self.row_size = 0
-
-    def __repr__(self):
-        return str(self.active)
 
     @property
     def size(self):
@@ -83,25 +81,19 @@ class Dynamic2DArray(DynamicArray):
         return self.row_size, self.ccols
 
     @property
-    def active(self) -> ndarray:
+    def active(self) -> np.ndarray:
         return self.arr[:self.row_size, :]
-
-    def __getitem__(self, index):
-        return self.active[index]
-
-    def __setitem__(self, index, value):
-        self.active[index] = value
 
     def add_column(self):
         """
         Add an extra column to the array with base value 0.
         """
         self.ccols += 1
-        new_arr = zeros((self.capacity, self.ccols), dtype=self.arr.dtype)
+        new_arr = np.zeros((self.capacity, self.ccols), dtype=self.arr.dtype)
         new_arr[:, :self.ccols - 1] = self.arr
         self.arr = new_arr
 
-    def update_row(self, row_index: int, data: ndarray):
+    def update_row(self, row_index: int, data: np.ndarray):
         """
         Update a specific row in the event matrix with new values.
 
@@ -110,7 +102,7 @@ class Dynamic2DArray(DynamicArray):
         """
         self.arr[row_index, :] = data
 
-    def update_col(self, col_index: int, data: ndarray) -> None:
+    def update_col(self, col_index: int, data: np.ndarray) -> None:
         """
         Update a specific column in the event matrix with new values.
 
@@ -131,8 +123,8 @@ class Dynamic2DArray(DynamicArray):
         self.row_size += 1
 
     def resize(self) -> None:
-        self.crows = int(ceil(self.crows * self.resize_factor))
-        new_arr = zeros((self.crows, self.ccols), dtype=self.arr.dtype)
+        self.crows = int(np.ceil(self.crows * self.resize_factor))
+        new_arr = np.zeros((self.crows, self.ccols), dtype=self.arr.dtype)
         new_arr[:self.row_size, :] = self.arr[:self.row_size, :]
         self.arr = new_arr
 

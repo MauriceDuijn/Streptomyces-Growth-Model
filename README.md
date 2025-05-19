@@ -27,7 +27,7 @@ Element(name: str, symbol: str (optional), initial_amount: int (default is 0))
 
 ### Reactions <a id="reactions-id"></a>
 Reactions define the interactions of the elements.
-Define which elements are used as a product and in what amount, also define what product elements are formed.
+Define which elements are used as a reactant that form the product.
 Each reaction has a rate, this directly influences the propensity and therefore the activity in the system.
 
 ```python

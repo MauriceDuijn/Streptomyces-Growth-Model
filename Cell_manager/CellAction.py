@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
+from utils.BenchmarkTimer import Timer
 from utils.DynamicArray import Dynamic2DArray
 from Space_manager.SpatialHashing import SpatialHashing
-from Cell_manager.Cell import Cell, Root
+from Cell_manager.Cell import Cell
 from Cell_manager.Colony import Colony
 from Event_manager.State import State
 from Event_manager.Condition import Condition
+
+
+action_timer = Timer()
 
 
 class Action(ABC):
@@ -54,6 +58,7 @@ class SwitchState(Action):
     def __init__(self, new_state):
         self.new_state = new_state
 
+    @action_timer.measure_decorator("SwitchState")
     def update(self, cell: Cell):
         # print(cell.state.event_mask)
         cell.state = self.new_state
@@ -69,6 +74,7 @@ class TropismCalculator:
         self.sampler_distance = 1e-6
         self.half_pi = np.pi / 2
 
+    @action_timer.measure_decorator("TropismCalculator")
     def update(self, cell: Cell) -> float:
         """
         Calculate tropism bend based on crowding stimuli.
@@ -90,7 +96,9 @@ class TropismCalculator:
         left_stimulus = self._calc_total_stimulus(neighbour_indexes, left_sample)
         right_stimulus = self._calc_total_stimulus(neighbour_indexes, right_sample)
 
+        # left_stimulus, right_stimulus = self._calc_total_stimulus(neighbour_indexes, left_sample, right_sample)
         difference = (right_stimulus - left_stimulus) / self.sampler_distance
+
         bend = np.tanh(difference * self.alpha) * self.max_bend
 
         return bend
@@ -116,10 +124,10 @@ class TropismCalculator:
         return left_sampler_point, right_sampler_point
 
     @staticmethod
-    def _calc_total_stimulus(neighbour_indexes, sample_point):
+    def _calc_total_stimulus(neighbour_indexes, sample_points):
         """Calculate the total crowding stimulus from a single sample point"""
         points = Cell.center_point_array[neighbour_indexes]
-        dists = Action.space.calc_distances(points, sample_point)
+        dists = Action.space.calc_distances(points, sample_points)
         filtered_dists = Action.space.filter_distances(dists)
         return CrowdingIndex.calc_crowding_index(filtered_dists).sum()
 
@@ -135,6 +143,7 @@ class CellGeometryCalculator:
     def update(self, cell: Cell):
         return
 
+    @action_timer.measure_decorator("CellGeometryCalculator")
     def calculate_new_cell_points(self, parent_cell: Cell, tropism_bend: float = 0) -> (tuple[int, int], tuple[int, int], float):
         """
         Calculate new cell's center, end, and direction.
@@ -195,6 +204,7 @@ class GrowCell(Action):
         self.add_base()                             # Add base values for the new cell
         self._execute_all_actions(cell, new_cell)   # Execute all growth actions
 
+    @action_timer.measure_decorator("GrowCell: make new cell")
     def _create_new_cell(self, parent_cell: Cell) -> Cell:
         """Creates a new cell based on parent cell."""
         tropism_bend = self.tropism.update(parent_cell)
@@ -204,6 +214,7 @@ class GrowCell(Action):
         )
         return Cell(center, end, np.degrees(direction), parent=parent_cell, length=parent_cell.length)
 
+    # @action_timer.measure_decorator("GrowCell: all actions")
     def _execute_all_actions(self, parent: Cell, child: Cell):
         """Execute the parent, new cell and intercellular actions."""
         for action in self.parent_actions:
@@ -214,6 +225,7 @@ class GrowCell(Action):
             duo_action.update(parent, child)
 
     @staticmethod
+    @action_timer.measure_decorator("GrowCell: link new cell")
     def _link_new_cell(parent: Cell, child: Cell) -> None:
         """
         Links the child cell to the parent and the same colony as the parent.
@@ -229,6 +241,7 @@ class AddDivIVA(Action):
     def __init__(self, polarisome_amount):
         self.amount = polarisome_amount
 
+    @action_timer.measure_decorator("AddDivIVA")
     def update(self, cell: Cell):
         cell.DivIVA += self.amount
 
@@ -249,121 +262,68 @@ class CrowdingIndex(Action):
         return float(error_tolerance_significance * np.e * cls.k * np.log10(10))
 
     def __init__(self, condition: Condition, alpha: float = 0):
-        self.condition_index = condition.index
-        self.alpha = alpha
+        self.condition_index: int = condition.index
+        self.alpha: float = alpha
 
     def update(self, cell: Cell) -> None:
         neighbour_indexes, distances = self._get_valid_neighbours(cell)
-        if len(neighbour_indexes) == 0:
-            return
+
         crowding_indexes = self.calc_crowding_index(distances)
-        self._set_crowding_index(cell, neighbour_indexes, crowding_indexes)
-        self._set_condition_factor(cell, neighbour_indexes, crowding_indexes)
 
-    def _get_valid_neighbours(self, cell: Cell) -> (np.ndarray, np.ndarray):
-        neighbour_indexes = np.array(Colony.get_all_neighbours(cell))
-        if len(neighbour_indexes) == 0:
-            return
-
-        points = Cell.center_point_array[neighbour_indexes]
-        distances = self.space.calc_distances(points, cell.center)
-
-        distances_filter = distances <= self.space.partition_size
-        return neighbour_indexes[distances_filter], distances[distances_filter]
-
-    @staticmethod
-    def _set_crowding_index(cell: Cell, neighbour_indexes, crowding_indexes) -> None:
+        Cell.crowding_index_array[neighbour_indexes] += crowding_indexes
         cell.crowding_index += crowding_indexes.sum()
-        Cell.batch_update_crowding(neighbour_indexes, crowding_indexes)
 
-    def _set_condition_factor(self, cell: Cell, neighbour_indexes, crowding_indexes):
-        crowding_indexes *= self.alpha
-        crowding_factor = self._crowding_factor(crowding_indexes)
-        self.condition_factors[neighbour_indexes, self.condition_index] = crowding_factor
-        self.condition_factors[cell.index, self.condition_index] = self._crowding_factor(cell.crowding_index)
+        self._set_condition_factor(cell, neighbour_indexes)
 
-    @staticmethod
-    def _crowding_factor(crowding):
-        return 1 / (1 + crowding)
+    @action_timer.measure_decorator("CrowdingIndex: get neighbours")
+    def _get_valid_neighbours(self, cell: Cell) -> (np.ndarray, np.ndarray):
+        with action_timer.measure("CrowdingIndex, GN: neighbour indexes"):
+            neighbour_indexes: np.ndarray = Colony.get_all_neighbours(cell)
+
+        with action_timer.measure("CrowdingIndex, GN: get points"):
+            points: np.ndarray = Cell.center_point_array[neighbour_indexes]
+
+        with action_timer.measure("CrowdingIndex, GN: dist ^2"):
+            distances_squared: np.ndarray = self.space.calc_distances_squared(points, cell.center)
+
+        with action_timer.measure("CrowdingIndex, GN: dist filter"):
+            distances_filter = distances_squared <= self.space.partition_size ** 2
+
+        with action_timer.measure("CrowdingIndex, GN: dist sqrt"):
+            distances = np.sqrt(distances_squared[distances_filter])
+
+        with action_timer.measure("CrowdingIndex, GN: filt indexes"):
+            neighbour_filt = neighbour_indexes[distances_filter]
+
+        return neighbour_filt, distances
+
+    @action_timer.measure_decorator("CrowdingIndex: set condition factor")
+    def _set_condition_factor(self, cell: Cell, neighbour_indexes):
+        all_indexes = np.append(neighbour_indexes, cell.index)
+        all_crowding = np.append(Cell.crowding_index_array[neighbour_indexes], cell.crowding_index)
+        self.condition_factors[all_indexes, self.condition_index] = self._calc_crowding_factor(all_crowding)
+
+    @action_timer.measure_decorator("CrowdingIndex: calc factor")
+    def _calc_crowding_factor(self, crowding: float or np.ndarray) -> float or np.ndarray:
+        return 1 / (1 + (crowding * self.alpha))
 
     @classmethod
+    @action_timer.measure_decorator("CrowdingIndex: calc crowding")
     def calc_crowding_index(cls, distances: np.ndarray) -> np.ndarray:
         """
         Calculates the crowding index.
 
         :param distances: array of distances of neighbouring cells.
-        :return: influence values
+        :return: crowding index values
         """
         return np.exp(-distances / (np.e * cls.k))
-
-
-# class CrowdingIndex(Action):
-#     k = 0
-#
-#     @classmethod
-#     def calculate_query_size(cls, error_tolerance_significance: float) -> float:
-#         """
-#         Calculates the cutoff distance when the crowding index value is less than 10**-error_tolerance_significance.
-#         Use this value for setting the space search radius.
-#         Must set a value for k beforehand.
-#
-#         :param error_tolerance_significance: The error tolerance significant value for base 10.
-#         :return: The cutoff distance based on the error tolerance.
-#         """
-#         return float(error_tolerance_significance * np.e * cls.k * np.log10(10))
-#
-#     def __init__(self, condition: Condition, alpha: float = 0):
-#         self.condition_index = condition.index
-#         self.alpha = alpha
-#
-#     def update(self, cell: Cell):
-#         # Query all neighbours in the local area (radius = k)
-#         neighbour_indexes = np.array(Colony.get_all_neighbours(cell))
-#
-#         # If no neighbours then can skip all the calculations
-#         if len(neighbour_indexes) == 0:
-#             return
-#
-#         # Get the relevant center points (to have a rough estimation of the entire cell position)
-#         points = Cell.center_point_array[neighbour_indexes]
-#
-#         # Calculate all the distances between the neighbour points and the current cell
-#         dists = self.space.calc_distances(points, cell.center)
-#
-#         # Filter out points that are beyond the searching distance (they get ignored in following calculations)
-#         # valid_dists = self.space.filter_distances(dists)
-#         valid_mask = dists <= self.space.partition_size
-#         valid_indices = neighbour_indexes[valid_mask]
-#         valid_dists = dists[valid_mask]
-#
-#         # Calculate the crowding index based on the distances
-#         crowding_indexes = self.calc_crowding_index(valid_dists)
-#
-#         # Update all neighbours with newly added influence
-#         cell.crowding_index += crowding_indexes.sum()
-#         Cell.batch_update_influences(valid_indices, crowding_indexes)
-#
-#         # Convert the crowding to a factor
-#         crowding_indexes *= self.alpha
-#         crowding_factor = 1 / (1 + crowding_indexes)
-#         self.condition_factors[valid_indices, self.condition_index] = crowding_factor
-#         self.condition_factors[cell.index, self.condition_index] = 1 / (1 + cell.crowding_index)
-#
-#     @classmethod
-#     def calc_crowding_index(cls, distances):
-#         """
-#         Calculates the crowding index.
-#
-#         :param distances: array of distances of neighbouring cells.
-#         :return: influence values
-#         """
-#         return np.exp(-distances / (np.e * cls.k))
 
 
 class Fragment(Action):
     def __init__(self, stump_state: State):
         self.stump_state: State = stump_state
 
+    @action_timer.measure_decorator("Fragment")
     def update(self, cell: Cell):
         self.decouple_from_parent(cell)
         branch = self.form_branch(cell)

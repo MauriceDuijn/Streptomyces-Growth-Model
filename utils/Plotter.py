@@ -135,10 +135,12 @@ class Plotter:
 
     @staticmethod
     def plot_cells_3D_crowding_index():
-        x_data = Cell.center_point_array[:, 0]
-        y_data = Cell.center_point_array[:, 1]
-        # crowding_index = Cell.crowding_index_array.active
-        crowding_index = Condition.condition_collection[0].factor
+        """[WIP]"""
+        x_data = Cell.center_point_array[1:, 0]
+        y_data = Cell.center_point_array[1:, 1]
+        crowding_index = Cell.crowding_index_array.active[1:]
+        crowding_index += 1
+        crowding_index **= -1
 
         # Create the 3D scatter plot
         fig = go.Figure(data=[go.Scatter3d(

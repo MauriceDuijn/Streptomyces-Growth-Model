@@ -22,7 +22,7 @@ class Cell:
 
         # Initial dummy data
         cls.age_array.append(0)
-        cls.crowding_index_array.append(1)
+        cls.crowding_index_array.append(0)
         cls.DivIVA_array.append(0)
         cls.cell_collection.append(instance)  # Store the cell in collective list
 
@@ -41,6 +41,21 @@ class Cell:
         self.add_new_cell(self)
         self.colony_index = None
 
+    @staticmethod
+    def create_root_cell(position: tuple[float, float], direction: float, start_state: State) -> 'Cell':
+        return Cell(position, position, direction, state=start_state)
+
+    def link_child(self, child: 'Cell'):
+        self.children.append(child)
+
+    @classmethod
+    def increase_age_over_time(cls, time_step):
+        cls.age_array.active += time_step
+
+    @classmethod
+    def increase_polarisome_over_time(cls, time_step):
+        cls.DivIVA_array.active *= np.exp(cls.DivIVA_binding_rate * time_step)
+
     @property
     def age(self):
         return self.age_array[self.index]
@@ -54,7 +69,7 @@ class Cell:
         return self.end_point_array[self.index]
 
     @property
-    def crowding_index(self):
+    def crowding_index(self) -> float:
         return self.crowding_index_array[self.index]
 
     @crowding_index.setter
@@ -69,36 +84,16 @@ class Cell:
     def DivIVA(self, value):
         self.DivIVA_array[self.index] = value
 
-    @staticmethod
-    def create_root_cell(position: tuple[float, float], direction: float, start_state: State) -> 'Cell':
-        return Cell(position, position, direction, state=start_state)
-
     @classmethod
-    def batch_update_crowding(cls, indices, values):
-        """Vectorized influence update"""
-        cls.crowding_index_array[indices] += values
+    def reset_class(cls):
+        cls.total_cells = 0
+        cls.cell_collection: list['Cell'] = []
 
-    @classmethod
-    def increase_age_over_time(cls, time_step):
-        cls.age_array.active += time_step
+        cls.center_point_array: Dynamic2DArray = Dynamic2DArray(capacity_columns=2)
+        cls.end_point_array: Dynamic2DArray = Dynamic2DArray(capacity_columns=2)
 
-    @classmethod
-    def increase_polarisome_over_time(cls, time_step):
-        cls.DivIVA_array.active *= np.exp(cls.DivIVA_binding_rate * time_step)
+        cls.age_array: DynamicArray = DynamicArray()
+        cls.crowding_index_array: DynamicArray = DynamicArray()
+        cls.DivIVA_array: DynamicArray = DynamicArray()
+        cls.DivIVA_binding_rate: float = 0
 
-    def link_child(self, child: 'Cell'):
-        self.children.append(child)
-
-
-class Root(Cell):
-    def __init__(self, position: tuple[float, float], direction: float, start_state: State):
-        super().__init__(position, position, direction, state=start_state)
-
-
-if __name__ == '__main__':
-    test_cell = Cell((0, 0), (0, 0), 0)
-    print(test_cell.age)
-    print(test_cell.DivIVA)
-    test_cell.DivIVA += 1
-    print(test_cell.DivIVA)
-    print(test_cell.crowding_index)

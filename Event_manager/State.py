@@ -25,6 +25,13 @@ class State:
     def add_event_mask(self, event_indexes):
         self.event_mask_array[self.index, event_indexes] = np.float64(1)
 
+    @classmethod
+    def reset_class(cls):
+        cls.total_states = 0
+        cls.state_nodes = []
+        cls.event_mask_array = Dynamic2DArray()
+        cls.cell_mask_array = Dynamic2DArray()
+
 
 if __name__ == '__main__':
     spore_state = State('Root')
