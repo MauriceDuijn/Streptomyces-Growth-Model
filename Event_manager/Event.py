@@ -110,7 +110,7 @@ class Event:
 
         print(state_padding, event_name_header)
         for cell_ind, line in enumerate(cls.event_propensities_array.active):
-            cell_state = f"{Cell.cell_collection[cell_ind].state.name:^{state_max_length}}"
+            cell_state = f"{Cell.instances[cell_ind].state.name:^{state_max_length}}"
             event_propensities = ' '.join(f"{data:^{event_max_length}}" for data in line)
             print(cell_state, event_propensities)
 

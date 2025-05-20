@@ -1,23 +1,19 @@
-from math import factorial
 import numpy as np
+from math import factorial
+from utils.Instance_tracker import InstanceTracker
 from Chemistry_manager.ElementalSpecies import Element
 
 
-class Reaction:
-    total_reactions = 0
-    reaction_channels: list['Reaction'] = []
-
+class Reaction(InstanceTracker):
     def __init__(self, name: str, rate: float,
                  reactants: dict[Element, int],
                  products: dict[Element, int]):
+        super().__init__()
         self.name: str = name
         self.rate: np.float64 = np.float64(rate)
         self.reactants: dict[Element, int] = reactants
         self.products: dict[Element, int] = products
         self.propensity: np.float64 = np.float64(0)
-        self.index: int = self.total_reactions
-        Reaction.total_reactions += 1
-        self.reaction_channels.append(self)
 
     def __str__(self) -> str:
         return f"Reaction({self.name}, prop.:{self})"
@@ -46,8 +42,3 @@ class Reaction:
 
     def calc_propensity(self) -> None:
         self.propensity = self.rate * self.calc_reactorial_count()
-
-    @classmethod
-    def reset_class(cls):
-        cls.total_reactions = 0
-        cls.reaction_channels = []

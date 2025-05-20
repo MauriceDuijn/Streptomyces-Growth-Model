@@ -9,7 +9,7 @@ from Cell_manager.Colony import Colony
 import Cell_manager.CellAction as act
 from Space_manager.SpatialHashing import SpatialHashing
 from Space_manager.SpatialPartitioning import SpacePartition
-from utils.Plotter import Plotter
+from utils.Colony_plotter import ColonyPlotter
 from utils.Animator import CellGrowthAnimator
 from Event_manager.Gillespie_algorithm import GillespieSimulator
 
@@ -184,11 +184,11 @@ def init():
         Condition.cell_condition_factor_array.append(0)
         Event.event_propensities_array.append(0)
 
-    cells = Cell.cell_collection
+    cells = Cell.instances
 
     # Create plotter
-    Plotter.dpi = 400
-    plotter = Plotter(dot_size=1)
+    ColonyPlotter.dpi = 400
+    plotter = ColonyPlotter(dot_size=1)
 
     # Create animator
     # animator = CellGrowthAnimator(space, cells, "crowding_index", END_TIME, fps=5, dot_size=1)

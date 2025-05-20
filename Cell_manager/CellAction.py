@@ -129,7 +129,7 @@ class TropismCalculator:
         points = Cell.center_point_array[neighbour_indexes]
         dists = Action.space.calc_distances(points, sample_points)
         filtered_dists = Action.space.filter_distances(dists)
-        return CrowdingIndex.calc_crowding_index(filtered_dists).sum()
+        return CrowdingIndex.calc_base_crowding_index(filtered_dists).sum()
 
 
 class CellGeometryCalculator:
@@ -261,17 +261,27 @@ class CrowdingIndex(Action):
         """
         return float(error_tolerance_significance * np.e * cls.k * np.log10(10))
 
-    def __init__(self, condition: Condition, alpha: float = 0):
-        self.condition_index: int = condition.index
-        self.alpha: float = alpha
+    def __init__(self, condition: Condition, alpha: float = 0, cell_length: float = 1):
+        self.condition_index: int = condition.index     # The condition index that stores the crowding factor
+        self.alpha: float = alpha                       # The strength value for the crowding factor intensity
+        self.cell_spacing: float = cell_length          # Used to normalize the crowding value based on segment length
+        # self.correction_factor = self.get_correction_factor()
+
+    # def get_correction_factor(self):
+    #     c = 2 * np.e * self.k
+    #     # cf = c * np.sinh(self.cell_spacing / c)
+    #     cf = self.cell_spacing ** 2
+    #     print(f"[Correction factor: {cf}]")
+    #     print(f"based on L={self.cell_spacing} and k={self.k}")
+    #     return cf
 
     def update(self, cell: Cell) -> None:
         neighbour_indexes, distances = self._get_valid_neighbours(cell)
 
-        crowding_indexes = self.calc_crowding_index(distances)
+        normal_crowding = self.calc_normalized_crowding_index(distances)
 
-        Cell.crowding_index_array[neighbour_indexes] += crowding_indexes
-        cell.crowding_index += crowding_indexes.sum()
+        Cell.crowding_index_array[neighbour_indexes] += normal_crowding
+        cell.crowding_index += normal_crowding.sum()
 
         self._set_condition_factor(cell, neighbour_indexes)
 
@@ -307,9 +317,12 @@ class CrowdingIndex(Action):
     def _calc_crowding_factor(self, crowding: float or np.ndarray) -> float or np.ndarray:
         return 1 / (1 + (crowding * self.alpha))
 
+    def calc_normalized_crowding_index(self, distances: np.ndarray):
+        return self.calc_base_crowding_index(distances / self.cell_spacing)
+
     @classmethod
     @action_timer.measure_decorator("CrowdingIndex: calc crowding")
-    def calc_crowding_index(cls, distances: np.ndarray) -> np.ndarray:
+    def calc_base_crowding_index(cls, distances: np.ndarray) -> np.ndarray:
         """
         Calculates the crowding index.
 

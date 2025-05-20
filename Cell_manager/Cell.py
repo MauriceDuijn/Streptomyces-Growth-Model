@@ -1,34 +1,21 @@
 import numpy as np
+from utils.Instance_tracker import InstanceTracker
 from utils.DynamicArray import DynamicArray, Dynamic2DArray
 from Event_manager.State import State
 
 
-class Cell:
-    total_cells = 0
-    cell_collection: list['Cell'] = []
-
+class Cell(InstanceTracker):
     center_point_array: Dynamic2DArray = Dynamic2DArray(capacity_columns=2)
     end_point_array: Dynamic2DArray = Dynamic2DArray(capacity_columns=2)
-
     age_array: DynamicArray = DynamicArray()
     crowding_index_array: DynamicArray = DynamicArray()
     DivIVA_array: DynamicArray = DynamicArray()
     DivIVA_binding_rate: float = 0
 
-    @classmethod
-    def add_new_cell(cls, instance: 'Cell'):
-        instance.index = cls.total_cells
-        cls.total_cells += 1
-
-        # Initial dummy data
-        cls.age_array.append(0)
-        cls.crowding_index_array.append(0)
-        cls.DivIVA_array.append(0)
-        cls.cell_collection.append(instance)  # Store the cell in collective list
-
     def __init__(self, center_position, end_position,
                  direction, length=1,
                  parent=None, state=None):
+        super().__init__()
         self.state: State = state                           # Initial cell state, changes dynamic
         self.parent: Cell = parent                          # Parent.end is start position
         self.children: list[Cell] = []                      # List of all the daughter cells (children)
@@ -37,24 +24,11 @@ class Cell:
         self.direction: float = np.radians(direction)       # Direction the cell is facing (converts degrees to radians)
         self.length: float = length                         # The length of the cell, from start position to end position
 
-        self.index = None
-        self.add_new_cell(self)
+        # Expand matrices
+        self.age_array.append(0)
+        self.crowding_index_array.append(0)
+        self.DivIVA_array.append(0)
         self.colony_index = None
-
-    @staticmethod
-    def create_root_cell(position: tuple[float, float], direction: float, start_state: State) -> 'Cell':
-        return Cell(position, position, direction, state=start_state)
-
-    def link_child(self, child: 'Cell'):
-        self.children.append(child)
-
-    @classmethod
-    def increase_age_over_time(cls, time_step):
-        cls.age_array.active += time_step
-
-    @classmethod
-    def increase_polarisome_over_time(cls, time_step):
-        cls.DivIVA_array.active *= np.exp(cls.DivIVA_binding_rate * time_step)
 
     @property
     def age(self):
@@ -84,10 +58,24 @@ class Cell:
     def DivIVA(self, value):
         self.DivIVA_array[self.index] = value
 
+    def link_child(self, child: 'Cell'):
+        self.children.append(child)
+
+    @staticmethod
+    def create_root_cell(position: tuple[float, float], direction: float, start_state: State) -> 'Cell':
+        return Cell(position, position, direction, state=start_state)
+
+    @classmethod
+    def increase_age_over_time(cls, time_step):
+        cls.age_array.active += time_step
+
+    @classmethod
+    def increase_polarisome_over_time(cls, time_step):
+        cls.DivIVA_array.active *= np.exp(cls.DivIVA_binding_rate * time_step)
+
     @classmethod
     def reset_class(cls):
-        cls.total_cells = 0
-        cls.cell_collection: list['Cell'] = []
+        super().reset_class()
 
         cls.center_point_array: Dynamic2DArray = Dynamic2DArray(capacity_columns=2)
         cls.end_point_array: Dynamic2DArray = Dynamic2DArray(capacity_columns=2)

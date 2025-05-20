@@ -1,5 +1,6 @@
 import numpy as np
 from utils.BenchmarkTimer import Timer
+from utils.SimulationLogger import SimulationLogger
 from utils.Animator import CellGrowthAnimator
 from Chemistry_manager.ReactionChannel import Reaction
 from Event_manager.Condition import Condition
@@ -8,6 +9,11 @@ from Cell_manager.Cell import Cell
 
 
 class GillespieSimulator:
+    """
+    Implementation of the Gillespie algorithm for handeling stochastic discrete cell based events.
+    Events are influenced by reaction and conditions.
+    Simulation ends when the end time is reached or when there are no events left.
+    """
     benchmark = Timer()
 
     def __init__(self,
@@ -16,6 +22,7 @@ class GillespieSimulator:
                  conditions: list[Condition],
                  events: list[Event],
                  cells: list[Cell],
+                 logger: SimulationLogger = None,
                  animator: CellGrowthAnimator = None):
         self.end_time: float = end_time
         self.reactions: list[Reaction] = reaction_channels
@@ -31,9 +38,11 @@ class GillespieSimulator:
         self.next_log = 0
         self.log_interval = 1   # Changes the amount of logs per time unit
 
+        self.logger = logger.set_simulator(self)
         self.animator = animator
 
     def run(self):
+        """Main loop of the Gillespie algorithm."""
         print("[Start Gillespie algorithm]")
         while self.run_time < self.end_time:
             self._update_propensities()
@@ -51,15 +60,12 @@ class GillespieSimulator:
 
             self._execute_event()
 
-            # if self.total_events == 300:
-            #     print("[Max events reached]")
-            #     break
-
             self._log_data()
 
         self._end_of_simulation()
 
     def _update_propensities(self):
+        """Change and update all propensity related effects."""
         self._update_reaction_base_propensity()
         self._update_condition_factors()
         self._update_event_propensities()
@@ -96,6 +102,7 @@ class GillespieSimulator:
 
     @benchmark.measure_decorator("time increase")
     def _update_time_increment(self):
+        """Increase the time based on the systems total propensity."""
         self.tau = np.random.exponential(1 / self.total_propensity)
         self.run_time += self.tau
 
@@ -105,21 +112,21 @@ class GillespieSimulator:
 
     @benchmark.measure_decorator("continuous factors")
     def _increment_continuous_factors(self):
+        """Increase time related events."""
         Cell.increase_age_over_time(self.tau)
         Cell.increase_polarisome_over_time(self.tau)
 
     @benchmark.measure_decorator("event execution")
     def _execute_event(self):
-        cell_index, event_index = self._pick_random_cell_and_event()
+        """Pick a random weighted event and execute its action."""
+        cell_index, event_index = Event.random_cell_event_index()
         self.events[event_index].update(self.cells[cell_index])
         self.total_events += 1
 
-    @staticmethod
-    def _pick_random_cell_and_event():
-        return Event.random_cell_event_index()
-
     @benchmark.measure_decorator("log data")
     def _log_data(self):
+        """Store data in logger and animator based on set config."""
+
         while self.run_time > self.next_log:
             print(self.run_time, self.total_propensity)
             self.next_log += self.log_interval
@@ -128,6 +135,7 @@ class GillespieSimulator:
             self.animator.snapshot_schedule(self.run_time)
 
     def _end_of_simulation(self):
+        """Final actions."""
         print("[Total events]", self.total_events)
         self.benchmark.print_times()
 
@@ -136,7 +144,7 @@ class GillespieSimulator:
 
 
 # def gillespie_algorithm(end_time: float,
-#                         reaction_channels: list[Reaction],
+#                         instances: list[Reaction],
 #                         conditions: list[Condition],
 #                         events: list[Event],
 #                         cells: list[Cell]):
@@ -146,7 +154,7 @@ class GillespieSimulator:
 #     print("[Start Gillespie algorithm]")
 #     while run_time < end_time:
 #         # Update propensity values
-#         for reaction in reaction_channels:
+#         for reaction in instances:
 #             reaction.calc_propensity()
 #
 #         for condition in conditions:
@@ -186,7 +194,7 @@ class GillespieSimulator:
 #         event_counter += 1
 #
 #         # print(run_time, cell_index, events[event_index].name)
-#         # print(run_time, A0, Reaction.reaction_channels[0].propensity, Cell.total_cells, *[elem.amount for elem in Element.elemental_species], event_counter)
+#         # print(run_time, A0, Reaction.instances[0].propensity, Cell.total, *[elem.amount for elem in Element.instances], event_counter)
 #
 #     # Testing
 #     print(Cell.DivIVA_array[Cell.DivIVA_array.active > 0])

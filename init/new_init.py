@@ -1,6 +1,6 @@
 import numpy as np
-from dataclasses import dataclass
 from types import SimpleNamespace
+from init.configs import GlobalConfig, CellConfig, DivIVAConfig, ChemicalConfig, LoggerConfig, PlotterConfig, AnimatorConfig
 from Chemistry_manager.ElementalSpecies import Element
 from Chemistry_manager.ReactionChannel import Reaction
 from Event_manager.State import State
@@ -10,8 +10,9 @@ from Cell_manager.Cell import Cell
 from Cell_manager.Colony import Colony
 import Cell_manager.CellAction as CeAc
 from Space_manager.SpatialHashing import SpatialHashing
-from utils.Plotter import Plotter
-from utils.Animator import CellGrowthAnimator
+from utils.SimulationLogger import SimulationLogger
+from utils.Colony_plotter import ColonyPlotter
+from utils.Animator import Animator
 from Event_manager.Gillespie_algorithm import GillespieSimulator
 
 
@@ -24,98 +25,57 @@ def init(paremeter_change=None):
     if paremeter_change:
         change_config(paremeter_change)
 
+    # Create initial classes based on the configs
     elements, reactions, states, conditions, general_actions, event_actions, events = create_classes()
 
     # Set the global partition size for the Colony SpatialHashing
     partition_size = CeAc.CrowdingIndex.calculate_query_size(GlobalConfig.ERROR_TOLERANCE_SIGNIFICANCE)
-    print("[Partition size]", partition_size)
     SpatialHashing.partition_size = partition_size
+    print("[Partition size]", partition_size)
 
     initialize_spores(states)
 
-    # Create plotter
-    Plotter.dpi = PlotterConfig.DPI
-    plotter = Plotter(dot_size=PlotterConfig.DOT_SIZE)
-
-    # Create animator
-    # animator = CellGrowthAnimator(cells, AnimatorConfig.PARAMETER, GlobalConfig.END_TIME,
-    #                               fps=AnimatorConfig.FPS, dot_size=1)
-    animator = None
+    # Create utils
+    logger, plotter, animator = create_utils()
 
     # Create simulation
     simulation = GillespieSimulator(GlobalConfig.END_TIME,
-                                    Reaction.reaction_channels,
+                                    Reaction.instances,
                                     Condition.condition_collection,
                                     Event.event_instances,
-                                    Cell.cell_collection,
-                                    animator)
+                                    Cell.instances,
+                                    logger, animator)
 
     return plotter, animator, simulation
 
 
 def change_config(paremeter_change):
     CellConfig.CELL_SEGMENT_LENGTH = paremeter_change
-
-
-# ---------------
-# Define Configs
-# ---------------
-@dataclass
-class GlobalConfig:
-    END_TIME: float = 60
-    SPORE_AMOUNT: int = 1
-    ERROR_TOLERANCE_SIGNIFICANCE = 3
-
-
-@dataclass
-class CellConfig:
-    CELL_SEGMENT_LENGTH: float = 1          # Segment size in micrometers
-    GROWTH_SPEED: float = 10                # Micro meter per hour
-    NOISE_ANGLE_DEVIATION: float = 10       # Normal distributed noise in degrees per segment
-    CROWDING_SLOPE_STEEPNESS: float = 10    # Width factor for crowding steepness
-    CROWDING_ALPHA: float = 5e-3            # How intens the crowding index affects the a micro meter of segment
-    TROPISM_SENSITIVITY = 0 #1e-2              # How intens the difference affects the bend
-    TROPISM_MAX_BEND = 90                   # Maximum bend caused by tropism
-
-    GROWTH_SPEED /= CELL_SEGMENT_LENGTH
-    NOISE_ANGLE_DEVIATION *= CELL_SEGMENT_LENGTH
-    CROWDING_ALPHA *= CELL_SEGMENT_LENGTH
-
-
-@dataclass
-class DivIVAConfig:
-    DIVIVA_MAX_BINDINGRATE: float = 1e-1
-    INITIAL_SPROUT_DIVIVA: float = 1
-    SPLIT_THRESHOLD: float = 1.1
-    SPLIT_RATE: float = 10
-    SPLIT_RATIO: float = 0.8
-    BRANCH_SPROUT_THRESHOLD = 1
-    BRANCH_SPROUT_RATE = 1
-
-
-@dataclass
-class ChemicalConfig:
-    INIT_STARCH_AMOUNT: int = 100_000
-    STARCH_RATE: float = CellConfig.GROWTH_SPEED / INIT_STARCH_AMOUNT  # Max cell event propensity = growth speed
-
-
-@dataclass
-class PlotterConfig:
-    DPI = 400
-    DOT_SIZE = 100
-
-
-@dataclass
-class AnimatorConfig:
-    DPI: int = 200
-    FPS: int = 5
-    DOT_SIZE: int = 3
-    PARAMETER = "crowding_index"
+    CellConfig.normalize_segment_length()
+    ChemicalConfig.update_starch_rate()
+    print(f"[Parameter change {CellConfig.CELL_SEGMENT_LENGTH}]")
+    print(f"[effect: GS={CellConfig.GROWTH_SPEED}, GR={CellConfig.GROWTH_RATE}, AD={CellConfig.NOISE_ANGLE_DEVIATION}, SR={ChemicalConfig.STARCH_RATE}]")
 
 
 def reset_classes():
     for project_class in [Element, Reaction, State, Condition, Event, Cell, Colony]:
         project_class.reset_class()
+
+
+def create_utils():
+    # Create logger
+    logger = SimulationLogger(LoggerConfig)
+
+    # Create plotter
+    ColonyPlotter.dpi = PlotterConfig.DPI
+    plotter = ColonyPlotter(dot_size=PlotterConfig.DOT_SIZE)
+
+    # Create animator
+    # animator = CellGrowthAnimator(cells, AnimatorConfig.PARAMETER, GlobalConfig.END_TIME,
+    #                               fps=AnimatorConfig.FPS, dot_size=1)
+    animator = None
+
+    return logger, plotter, animator
 
 
 def create_classes():
@@ -159,18 +119,6 @@ def create_classes():
     )
 
     # ---------------
-    # Define General Actions
-    # ---------------
-    general_actions = SimpleNamespace(
-        SWITCH_STRAIGHT=CeAc.SwitchState(states.STRAIGHT),
-        GERMTUBE_DIVIVA=CeAc.AddDivIVA(DivIVAConfig.INITIAL_SPROUT_DIVIVA),
-        TRANSFER_DIVIVA_ALL=CeAc.Transfer("DivIVA", 1),
-        TRANSFER_DIVIVA_SPLIT=CeAc.Transfer("DivIVA", DivIVAConfig.SPLIT_RATIO),
-        CROWDING_INDEX=CeAc.CrowdingIndex(conditions.CROWDING_INDEX, CellConfig.CROWDING_ALPHA),
-        FRAGMENT=CeAc.Fragment(stump_state=states.SPORE_GERM_TUBE_2)
-    )
-
-    # ---------------
     # Link data from other classes to the action class
     # ---------------
     CeAc.Action.event_propensities = Event.event_propensities_array
@@ -183,6 +131,18 @@ def create_classes():
     CeAc.GrowCell.angle_deviation = CellConfig.NOISE_ANGLE_DEVIATION
     CeAc.GrowCell.tropism_sensitivity = CellConfig.TROPISM_SENSITIVITY
     CeAc.GrowCell.tropism_max_bend = CellConfig.TROPISM_MAX_BEND
+
+    # ---------------
+    # Define General Actions
+    # ---------------
+    general_actions = SimpleNamespace(
+        SWITCH_STRAIGHT=CeAc.SwitchState(states.STRAIGHT),
+        GERMTUBE_DIVIVA=CeAc.AddDivIVA(DivIVAConfig.INITIAL_SPROUT_DIVIVA),
+        TRANSFER_DIVIVA_ALL=CeAc.Transfer("DivIVA", 1),
+        TRANSFER_DIVIVA_SPLIT=CeAc.Transfer("DivIVA", DivIVAConfig.SPLIT_RATIO),
+        CROWDING_INDEX=CeAc.CrowdingIndex(conditions.CROWDING_INDEX, CellConfig.CROWDING_ALPHA, CellConfig.CELL_SEGMENT_LENGTH),
+        FRAGMENT=CeAc.Fragment(stump_state=states.SPORE_GERM_TUBE_2)
+    )
 
     # ---------------
     # Define Event Actions
