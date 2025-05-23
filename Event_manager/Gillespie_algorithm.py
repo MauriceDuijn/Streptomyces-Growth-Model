@@ -1,6 +1,7 @@
 import numpy as np
 from utils.BenchmarkTimer import Timer
-from utils.SimulationLogger import SimulationLogger
+from Analysis.SimulationLogger import SimulationLogger
+from Analysis.ReportManager import ReportManager
 from utils.Animator import CellGrowthAnimator
 from Chemistry_manager.ReactionChannel import Reaction
 from Event_manager.Condition import Condition
@@ -23,6 +24,7 @@ class GillespieSimulator:
                  events: list[Event],
                  cells: list[Cell],
                  logger: SimulationLogger = None,
+                 reporter: ReportManager = None,
                  animator: CellGrowthAnimator = None):
         self.end_time: float = end_time
         self.reactions: list[Reaction] = reaction_channels
@@ -35,10 +37,9 @@ class GillespieSimulator:
         self.total_events = 0
         self.run_time = 0
         self.tau = 0
-        self.next_log = 0
-        self.log_interval = 1   # Changes the amount of logs per time unit
 
-        self.logger = logger.set_simulator(self)
+        self.logger = logger.set_simulator(self) if logger else logger
+        self.reporter = reporter.set_simulator(self) if reporter else reporter
         self.animator = animator
 
     def run(self):
@@ -48,21 +49,18 @@ class GillespieSimulator:
             self._update_propensities()
 
             if self.total_propensity == 0:
-                print("[No reactions left]")
+                self._end_of_simulation("No reactions left")
                 break
 
             self._update_time_increment()
             self._increment_continuous_factors()
 
             if self.run_time >= self.end_time:
-                print("[End time reached]")
+                self._end_of_simulation("End time reached")
                 break
 
             self._execute_event()
-
             self._log_data()
-
-        self._end_of_simulation()
 
     def _update_propensities(self):
         """Change and update all propensity related effects."""
@@ -125,80 +123,22 @@ class GillespieSimulator:
 
     @benchmark.measure_decorator("log data")
     def _log_data(self):
-        """Store data in logger and animator based on set config."""
+        """Store data in logger, reporter and animator based on set config."""
+        if self.logger:
+            self.logger.log()
 
-        while self.run_time > self.next_log:
-            print(self.run_time, self.total_propensity)
-            self.next_log += self.log_interval
+        if self.reporter:
+            self.reporter.report()
 
         if self.animator:
             self.animator.snapshot_schedule(self.run_time)
 
-    def _end_of_simulation(self):
+    def _end_of_simulation(self, end_condition: str):
         """Final actions."""
+        self._log_data()
+        print(f"[End simulation: {end_condition}]")
         print("[Total events]", self.total_events)
-        self.benchmark.print_times()
+        # self.benchmark.print_times()
 
         # if self.animator:
         #     self.animator.render(save_path="Tropism_test.1.mp4", overwrite=True)
-
-
-# def gillespie_algorithm(end_time: float,
-#                         instances: list[Reaction],
-#                         conditions: list[Condition],
-#                         events: list[Event],
-#                         cells: list[Cell]):
-#     btimer = Timer()
-#     event_counter = 0
-#     run_time = 0
-#     print("[Start Gillespie algorithm]")
-#     while run_time < end_time:
-#         # Update propensity values
-#         for reaction in instances:
-#             reaction.calc_propensity()
-#
-#         for condition in conditions:
-#             condition.calc_factor()
-#
-#         for event in events:
-#             event.update_propensity()
-#
-#         # Apply the mask
-#         Event.state_mask_correction()
-#
-#         # Calculate the total propensity
-#         Event.update_total_propensity()
-#         A0 = Event.total_propensity
-#
-#         # Stop if there are no reactions left
-#         if A0 == 0:
-#             print("[No reactions left]")
-#             break
-#
-#         # Update the time
-#         tau = np.random.exponential(1 / A0)
-#         run_time += tau
-#
-#         # Increase continuous parameters
-#         Cell.increase_age_over_time(tau)
-#         Cell.increase_polarisome_over_time(tau)
-#
-#         # Stop if the next event happens
-#         if run_time >= end_time:
-#             print("[End time reached]")
-#             break
-#
-#         # Pick a cell and event index based on the propensity
-#         cell_index, event_index = Event.random_cell_event_index()
-#         events[event_index].update(cells[cell_index])
-#         event_counter += 1
-#
-#         # print(run_time, cell_index, events[event_index].name)
-#         # print(run_time, A0, Reaction.instances[0].propensity, Cell.total, *[elem.amount for elem in Element.instances], event_counter)
-#
-#     # Testing
-#     print(Cell.DivIVA_array[Cell.DivIVA_array.active > 0])
-#
-#     # Outside loop stats
-#     print(event_counter)
-#     btimer.print_times()

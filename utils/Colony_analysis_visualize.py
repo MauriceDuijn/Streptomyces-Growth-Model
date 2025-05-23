@@ -24,10 +24,10 @@ class CAVisualize:
         plt.show()
 
     @staticmethod
-    def show_crowding(distribution, colony_index):
+    def show_crowding(distribution, colony_index, extra_text):
         plt.figure()
         plt.hist(distribution[colony_index], bins=20)
         plt.xlabel("Total Crowding per Cell", fontsize=12)
         plt.ylabel("Number of Cells", fontsize=12)
-        plt.title(f"Colony {colony_index} Distribution of Cell Crowding", fontsize=14)
+        plt.title(f"{extra_text}Colony {colony_index} Distribution of Cell Crowding", fontsize=14)
         plt.show()

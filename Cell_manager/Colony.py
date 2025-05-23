@@ -16,6 +16,7 @@ class Colony:
 
         self.index = None
         self.add_new_colony(self)
+        self.add_cell(self.root)
 
     @property
     def cell_count(self):

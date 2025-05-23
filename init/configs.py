@@ -3,8 +3,11 @@ from dataclasses import dataclass
 
 @dataclass
 class GlobalConfig:
-    END_TIME: float = 60
-    SPORE_AMOUNT: int = 1
+    RUN_NAME: str = "test_run_json_multispore_1.15"
+    RUN_REPEATS: int = 3
+    REPORT_INTERVAL: int = 6
+    END_TIME: float = 12
+    SPORE_AMOUNT: int = 5
     ERROR_TOLERANCE_SIGNIFICANCE = 3
 
 
@@ -12,18 +15,26 @@ class GlobalConfig:
 class CellConfig:
     CELL_SEGMENT_LENGTH: float = 1          # Segment size in micrometers
     GROWTH_SPEED: float = 10                # Micrometer growth per time unit
-    NOISE_ANGLE_DEVIATION: float = 20       # Normal noise deviation in degrees per micro meter
-    CROWDING_SLOPE_STEEPNESS: float = 10    # Width factor for crowding steepness
-    CROWDING_ALPHA: float = 0 #5e-3            # How intens the crowding index affects the a micro meter of segment
-    TROPISM_SENSITIVITY = 0 #1e-2              # How intens the stimulus difference affects the bend
-    TROPISM_MAX_BEND = 90                   # Maximum bend caused by tropism
+    ANGLE_DEVIATION_PER_MICRON: float = 20  # Normal noise deviation in degrees per micro meter
+    CROWDING_SLOPE_STEEPNESS: float = 10    # Width factor for crowding steepness, regulates the radius of influence
+    CROWDING_INTENSITY: float = 1e-2        # How intens the crowding index affects per micro meter of segment
+    TROPISM_INTENSITY = 0                   # How intens the stimulus difference affects the bend
+    TROPISM_BEND_PER_MICRON = 20            # Maximum bend caused by tropism
 
+    # Normal
     GROWTH_RATE: float = GROWTH_SPEED / CELL_SEGMENT_LENGTH
+    # NOISE_ANGLE_DEVIATION: float = ANGLE_DEVIATION_PER_MICRON * CELL_SEGMENT_LENGTH ** np.log(2)
+    NOISE_ANGLE_DEVIATION: float = ANGLE_DEVIATION_PER_MICRON * CELL_SEGMENT_LENGTH ** 0.5
+    CROWDING_ALPHA: float = CROWDING_INTENSITY
+
+    TROPISM_ALPHA: float = TROPISM_INTENSITY
+    TROPISM_MAX_BEND: float = TROPISM_BEND_PER_MICRON
 
     @classmethod
     def normalize_segment_length(cls):
         """Normalize parameters based on segment length"""
         cls.GROWTH_RATE = cls.GROWTH_SPEED / cls.CELL_SEGMENT_LENGTH
+        cls.NOISE_ANGLE_DEVIATION = cls.ANGLE_DEVIATION_PER_MICRON * cls.CELL_SEGMENT_LENGTH ** 0.5
 
 
 @dataclass
@@ -39,7 +50,7 @@ class DivIVAConfig:
 
 @dataclass
 class ChemicalConfig:
-    INIT_STARCH_AMOUNT: int = 100_000
+    INIT_STARCH_AMOUNT: int = 1e5 / CellConfig.CELL_SEGMENT_LENGTH
     STARCH_RATE: float = CellConfig.GROWTH_RATE / INIT_STARCH_AMOUNT  # Max cell event propensity = growth speed
 
     @classmethod
@@ -54,6 +65,25 @@ class LoggerConfig:
     log_state_count: bool = True
     log_total_propensity: bool = True
     log_cell_total_propensity: bool = True
+
+
+class ReporterConfig:
+    TIME_POINTS = [
+            i * GlobalConfig.REPORT_INTERVAL
+            for i in range(int(GlobalConfig.END_TIME / GlobalConfig.REPORT_INTERVAL) + 1)
+        ]
+
+    POSSIBLE_PARAMETERS = [
+        "min_diameter",
+        "max_diameter",
+        "number_of_cells",
+        "num_active_cells",
+        "average_crowding",
+        "average_propensity",
+        "area"
+    ]
+    ACTIVE_PARAMETERS = POSSIBLE_PARAMETERS
+    SAVE_AS_JSON_FORMAT = True
 
 
 @dataclass

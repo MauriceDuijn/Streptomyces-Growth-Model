@@ -3,17 +3,10 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+from init.configs import LoggerConfig
 from Chemistry_manager.ElementalSpecies import Element
 from Chemistry_manager.ReactionChannel import Reaction
 from Event_manager.State import State
-
-
-class LoggerConfig:
-    log_element_counts: bool = True
-    log_reaction_propensities: bool = True
-    log_state_counts: bool = True
-    log_total_propensities: bool = True
-    log_events_total_propensity: bool = True
 
 
 class LogState:
@@ -39,32 +32,33 @@ class LogState:
 
 
 class SimulationLogger:
-    def __init__(self, config, log_interval: float = 1.0):
+    def __init__(self, config, log_interval: float = 2.0):
         self.config: LoggerConfig = config
-        self.log: list[LogState] = []
+        self.log_states: list[LogState] = []
         self.next_log: float = 0.0
         self.log_interval: float = log_interval
         self.simulator = None
 
     def log(self):
         """Capture the current simulation state"""
-        if not self.should_log():
-            return
+        while self.should_log():
+            # Simple print statement
+            print(self.simulator.run_time, self.simulator.total_propensity)
+            self.increment_log_timing()
+            self.make_log()
 
-        self.increment_log_timing()
-
+    def make_log(self):
         log_state = self.capture_state()
-        self.log.append(log_state)
+        self.log_states.append(log_state)
 
     def capture_state(self):
         log_state = LogState()
 
         log_state.set_time(self.simulator.run_time)
-
-        if self.config.log_element_counts:
+        if self.config.log_element_count:
             log_state.set_element_count()
 
-        if self.config.log_reaction_propensities:
+        if self.config.log_reaction_propensity:
             log_state.set_reaction_propensities()
 
         return log_state
@@ -79,3 +73,4 @@ class SimulationLogger:
 
     def set_simulator(self, simulator):
         self.simulator = simulator
+        return self

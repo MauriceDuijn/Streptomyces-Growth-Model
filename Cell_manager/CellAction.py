@@ -65,6 +65,40 @@ class SwitchState(Action):
         State.cell_mask_array[cell.index] = cell.state.event_mask
 
 
+class CellGeometryCalculator:
+    """Handles geometric calculations for new cell positions"""
+
+    def __init__(self, length, angle_deviation=0, bend=0):
+        self.length = length
+        self.angle_deviation = np.radians(angle_deviation)
+        self.bend = np.radians(bend)
+
+    @action_timer.measure_decorator("CellGeometryCalculator")
+    def calculate_new_cell_points(self, parent_cell: Cell, tropism_bend: float = 0) -> (tuple[int, int], tuple[int, int], float):
+        """
+        Calculate new cell's center, end, and direction.
+
+        :param parent_cell: Used to copy the direction
+        :param tropism_bend: Bend towards nutrients, away from crowded spaces (in radians)
+        :return: Cell center point, Cell end point, direction (in radians)
+        """
+        noise = np.random.normal(0, self.angle_deviation)
+        random_bend = np.random.choice([self.bend, -self.bend])
+        new_direction = parent_cell.direction + random_bend + tropism_bend + noise
+
+        return self.spatial_calculations(parent_cell, new_direction)
+
+    def spatial_calculations(self, cell: Cell, new_direction: float) -> (tuple[int, int], tuple[int, int], float):
+        x, y = cell.end
+        dx = self.length * np.sin(new_direction)
+        dy = self.length * np.cos(new_direction)
+
+        new_center = (x + (dx / 2), y + (dy / 2))
+        new_end = (x + dx, y + dy)
+
+        return new_center, new_end, new_direction
+
+
 class TropismCalculator:
     """Handles tropism-related calculations"""
 
@@ -75,7 +109,7 @@ class TropismCalculator:
         self.half_pi = np.pi / 2
 
     @action_timer.measure_decorator("TropismCalculator")
-    def update(self, cell: Cell) -> float:
+    def calc_tropism_bend(self, cell: Cell) -> float:
         """
         Calculate tropism bend based on crowding stimuli.
 
@@ -132,44 +166,7 @@ class TropismCalculator:
         return CrowdingIndex.calc_base_crowding_index(filtered_dists).sum()
 
 
-class CellGeometryCalculator:
-    """Handles geometric calculations for new cell positions"""
-
-    def __init__(self, length, angle_deviation=0, bend=0):
-        self.length = length
-        self.angle_deviation = np.radians(angle_deviation)
-        self.bend = np.radians(bend)
-
-    def update(self, cell: Cell):
-        return
-
-    @action_timer.measure_decorator("CellGeometryCalculator")
-    def calculate_new_cell_points(self, parent_cell: Cell, tropism_bend: float = 0) -> (tuple[int, int], tuple[int, int], float):
-        """
-        Calculate new cell's center, end, and direction.
-
-        :param parent_cell: Used to copy the direction
-        :param tropism_bend: Bend towards nutrients, away from crowded spaces (in radians)
-        :return: Cell center point, Cell end point, direction (in radians)
-        """
-        noise = np.random.normal(0, self.angle_deviation)
-        random_bend = np.random.choice([self.bend, -self.bend])
-        new_direction = parent_cell.direction + random_bend + tropism_bend + noise
-
-        return self.spatial_calculations(parent_cell, new_direction)
-
-    def spatial_calculations(self, cell: Cell, new_direction: float) -> (tuple[int, int], tuple[int, int], float):
-        x, y = cell.end
-        dx = self.length * np.sin(new_direction)
-        dy = self.length * np.cos(new_direction)
-
-        new_center = (x + (dx / 2), y + (dy / 2))
-        new_end = (x + dx, y + dy)
-
-        return new_center, new_end, new_direction
-
-
-class GrowCell(Action):
+class GrowCell(Action, CellGeometryCalculator, TropismCalculator):
     """
     Next update a new cell will grow from given cell.
     """
@@ -195,8 +192,8 @@ class GrowCell(Action):
         tropism_max_bend = tropism_max_bend if tropism_max_bend is not None else self.tropism_max_bend
 
         # Link to calculator objects
-        self.geometry = CellGeometryCalculator(cell_length, angle_deviation, bend)
-        self.tropism = TropismCalculator(tropism_sensitivity, tropism_max_bend)
+        CellGeometryCalculator.__init__(self, length=cell_length, angle_deviation=angle_deviation, bend=bend)
+        TropismCalculator.__init__(self, sensitivity=tropism_sensitivity, max_bend=tropism_max_bend)
 
     def update(self, cell: Cell):
         new_cell = self._create_new_cell(cell)      # Create a new cell based on the position of the parent cell
@@ -207,8 +204,8 @@ class GrowCell(Action):
     @action_timer.measure_decorator("GrowCell: make new cell")
     def _create_new_cell(self, parent_cell: Cell) -> Cell:
         """Creates a new cell based on parent cell."""
-        tropism_bend = self.tropism.update(parent_cell)
-        center, end, direction = self.geometry.calculate_new_cell_points(
+        tropism_bend = self.calc_tropism_bend(parent_cell)
+        center, end, direction = self.calculate_new_cell_points(
             parent_cell,
             tropism_bend
         )
@@ -248,6 +245,7 @@ class AddDivIVA(Action):
 
 class CrowdingIndex(Action):
     k = 0
+    spacing = 0
 
     @classmethod
     def calculate_query_size(cls, error_tolerance_significance: float) -> float:
@@ -261,27 +259,17 @@ class CrowdingIndex(Action):
         """
         return float(error_tolerance_significance * np.e * cls.k * np.log10(10))
 
-    def __init__(self, condition: Condition, alpha: float = 0, cell_length: float = 1):
+    def __init__(self, condition: Condition, alpha: float = 0):
         self.condition_index: int = condition.index     # The condition index that stores the crowding factor
         self.alpha: float = alpha                       # The strength value for the crowding factor intensity
-        self.cell_spacing: float = cell_length          # Used to normalize the crowding value based on segment length
-        # self.correction_factor = self.get_correction_factor()
-
-    # def get_correction_factor(self):
-    #     c = 2 * np.e * self.k
-    #     # cf = c * np.sinh(self.cell_spacing / c)
-    #     cf = self.cell_spacing ** 2
-    #     print(f"[Correction factor: {cf}]")
-    #     print(f"based on L={self.cell_spacing} and k={self.k}")
-    #     return cf
 
     def update(self, cell: Cell) -> None:
         neighbour_indexes, distances = self._get_valid_neighbours(cell)
 
-        normal_crowding = self.calc_normalized_crowding_index(distances)
+        crowding_index = self.calc_base_crowding_index(distances)
 
-        Cell.crowding_index_array[neighbour_indexes] += normal_crowding
-        cell.crowding_index += normal_crowding.sum()
+        Cell.crowding_index_array[neighbour_indexes] += crowding_index
+        cell.crowding_index += crowding_index.sum()
 
         self._set_condition_factor(cell, neighbour_indexes)
 
@@ -317,9 +305,6 @@ class CrowdingIndex(Action):
     def _calc_crowding_factor(self, crowding: float or np.ndarray) -> float or np.ndarray:
         return 1 / (1 + (crowding * self.alpha))
 
-    def calc_normalized_crowding_index(self, distances: np.ndarray):
-        return self.calc_base_crowding_index(distances / self.cell_spacing)
-
     @classmethod
     @action_timer.measure_decorator("CrowdingIndex: calc crowding")
     def calc_base_crowding_index(cls, distances: np.ndarray) -> np.ndarray:
@@ -329,7 +314,7 @@ class CrowdingIndex(Action):
         :param distances: array of distances of neighbouring cells.
         :return: crowding index values
         """
-        return np.exp(-distances / (np.e * cls.k))
+        return np.exp(-distances / (np.e * cls.k)) * cls.spacing
 
 
 class Fragment(Action):

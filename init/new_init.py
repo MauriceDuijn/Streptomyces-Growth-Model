@@ -1,6 +1,8 @@
 import numpy as np
 from types import SimpleNamespace
-from init.configs import GlobalConfig, CellConfig, DivIVAConfig, ChemicalConfig, LoggerConfig, PlotterConfig, AnimatorConfig
+from init.configs import GlobalConfig, CellConfig, DivIVAConfig, ChemicalConfig, LoggerConfig, ReporterConfig, PlotterConfig
+from Analysis.SimulationLogger import SimulationLogger
+from Analysis.ReportManager import ReportManager
 from Chemistry_manager.ElementalSpecies import Element
 from Chemistry_manager.ReactionChannel import Reaction
 from Event_manager.State import State
@@ -10,9 +12,7 @@ from Cell_manager.Cell import Cell
 from Cell_manager.Colony import Colony
 import Cell_manager.CellAction as CeAc
 from Space_manager.SpatialHashing import SpatialHashing
-from utils.SimulationLogger import SimulationLogger
 from utils.Colony_plotter import ColonyPlotter
-from utils.Animator import Animator
 from Event_manager.Gillespie_algorithm import GillespieSimulator
 
 
@@ -36,7 +36,8 @@ def init(paremeter_change=None):
     initialize_spores(states)
 
     # Create utils
-    logger, plotter, animator = create_utils()
+    logger, reporter = create_analysis_tools()
+    plotter, animator = create_utils()
 
     # Create simulation
     simulation = GillespieSimulator(GlobalConfig.END_TIME,
@@ -44,7 +45,10 @@ def init(paremeter_change=None):
                                     Condition.condition_collection,
                                     Event.event_instances,
                                     Cell.instances,
-                                    logger, animator)
+                                    logger=logger,
+                                    reporter=reporter,
+                                    animator=animator
+                                    )
 
     return plotter, animator, simulation
 
@@ -62,10 +66,19 @@ def reset_classes():
         project_class.reset_class()
 
 
-def create_utils():
+def create_analysis_tools():
     # Create logger
     logger = SimulationLogger(LoggerConfig)
 
+    # Create reporter
+    reporter = ReportManager(time_points=ReporterConfig.TIME_POINTS,
+                             report_params=ReporterConfig.ACTIVE_PARAMETERS,
+                             save_as_json=ReporterConfig.SAVE_AS_JSON_FORMAT)
+
+    return logger, reporter
+
+
+def create_utils():
     # Create plotter
     ColonyPlotter.dpi = PlotterConfig.DPI
     plotter = ColonyPlotter(dot_size=PlotterConfig.DOT_SIZE)
@@ -75,7 +88,7 @@ def create_utils():
     #                               fps=AnimatorConfig.FPS, dot_size=1)
     animator = None
 
-    return logger, plotter, animator
+    return plotter, animator
 
 
 def create_classes():
@@ -126,10 +139,11 @@ def create_classes():
     CeAc.Action.condition_factors = Condition.cell_condition_factor_array
 
     CeAc.CrowdingIndex.k = CellConfig.CROWDING_SLOPE_STEEPNESS
+    CeAc.CrowdingIndex.spacing = CellConfig.CELL_SEGMENT_LENGTH
 
     CeAc.GrowCell.cell_length = CellConfig.CELL_SEGMENT_LENGTH
     CeAc.GrowCell.angle_deviation = CellConfig.NOISE_ANGLE_DEVIATION
-    CeAc.GrowCell.tropism_sensitivity = CellConfig.TROPISM_SENSITIVITY
+    CeAc.GrowCell.tropism_sensitivity = CellConfig.TROPISM_ALPHA
     CeAc.GrowCell.tropism_max_bend = CellConfig.TROPISM_MAX_BEND
 
     # ---------------
@@ -140,7 +154,7 @@ def create_classes():
         GERMTUBE_DIVIVA=CeAc.AddDivIVA(DivIVAConfig.INITIAL_SPROUT_DIVIVA),
         TRANSFER_DIVIVA_ALL=CeAc.Transfer("DivIVA", 1),
         TRANSFER_DIVIVA_SPLIT=CeAc.Transfer("DivIVA", DivIVAConfig.SPLIT_RATIO),
-        CROWDING_INDEX=CeAc.CrowdingIndex(conditions.CROWDING_INDEX, CellConfig.CROWDING_ALPHA, CellConfig.CELL_SEGMENT_LENGTH),
+        CROWDING_INDEX=CeAc.CrowdingIndex(conditions.CROWDING_INDEX, CellConfig.CROWDING_ALPHA),
         FRAGMENT=CeAc.Fragment(stump_state=states.SPORE_GERM_TUBE_2)
     )
 
