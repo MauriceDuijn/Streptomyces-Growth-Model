@@ -3,8 +3,8 @@ import plotly.graph_objects as go
 import numpy as np
 from scipy.spatial import ConvexHull
 
-from Cell_manager.Cell import Cell
-from Cell_manager.Colony import Colony
+from src.organic import cell
+from src.organic.colony import Colony
 
 
 class ColonyPlotter:
@@ -20,7 +20,7 @@ class ColonyPlotter:
         self.dotsize = dot_size * 72 / self.dpi
         self.linewidth = linewidth
 
-        # Temporary data holder
+        # Temporary repeat_data holder
         self.fig = None
         self.ax = None
         self.scatter = None

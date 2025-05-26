@@ -53,7 +53,7 @@ class DynamicArray:
         """Smartly resize the array by allocating new capacity in one operation."""
         new_capacity = int(np.ceil(self.capacity * self.resize_factor))
         new_arr = np.zeros(new_capacity, dtype=self.arr.dtype)
-        new_arr[:self.arr.size] = self.arr  # Copy existing data
+        new_arr[:self.arr.size] = self.arr  # Copy existing repeat_data
         self.arr = new_arr
         self.capacity = new_capacity
 
@@ -98,7 +98,7 @@ class Dynamic2DArray(DynamicArray):
         Update a specific row in the event matrix with new values.
 
         :param row_index: Index of the row to update.
-        :param data: New row data, must match the number of columns.
+        :param data: New row repeat_data, must match the number of columns.
         """
         self.arr[row_index, :] = data
 
@@ -107,7 +107,7 @@ class Dynamic2DArray(DynamicArray):
         Update a specific column in the event matrix with new values.
 
         :param col_index: Index of the column to update.
-        :param data: New column data, must match the number of active rows.
+        :param data: New column repeat_data, must match the number of active rows.
         """
         self.active[:, col_index] = data
 

@@ -3,12 +3,12 @@ from scipy.spatial import ConvexHull
 from pathlib import Path
 import json
 
-from init.configs import CellConfig
-from utils.Instance_tracker import InstanceTracker
-from utils.Colony_analysis_visualize import CAVisualize
-from Cell_manager.Colony import Colony
-from Cell_manager.Cell import Cell
-from Event_manager.Event import Event
+from src.init.configs import CellConfig
+from src.utils.instance_tracker import InstanceTracker
+from src.utils.colony_analysis_plotter import CAVisualize
+from src.organic.colony import Colony
+from src.organic.cell import Cell
+from src.event.event import Event
 
 
 class ColonyAnalysisReport(CAVisualize, InstanceTracker):
@@ -64,7 +64,7 @@ class ColonyAnalysisReport(CAVisualize, InstanceTracker):
         self.average_crowding.append(np.average(crowding))
         self.crowd_distr.append(crowding)
 
-        # Morphology data
+        # Morphology repeat_data
         points = colony.cell_points
         self.area.append(self.calc_area(points))
         min_dim, max_dim, projected = self.calc_diameter(points)
@@ -131,16 +131,28 @@ class ColonyAnalysisReport(CAVisualize, InstanceTracker):
         with open(run_file_path, 'a') as file:
             file.write(single_string_report)
 
-    def save_as_json(self, run_file_path: Path, time_point: float):
+    def save_as_json(self, repeat_file_path: Path, time_point: float):
         # Calculated metrics
-        total_length = [value * CellConfig.CELL_SEGMENT_LENGTH for value in self.number_of_cells]
-        density = [
+        log10_area = [
+            np.log10(area)
+            if area > 0 else 1e-6
+            for area in self.area
+        ]
+        total_length = [
+            value * CellConfig.CELL_SEGMENT_LENGTH
+            for value in self.number_of_cells
+        ]
+        hyphal_density = [
             length / area
             if area > 0 else 0
             for length, area in zip(total_length, self.area)
         ]
+        tip_density = [
+            active_tips / length
+            for active_tips, length in zip(self.num_active_cells, total_length)
+        ]
 
-        # Report data in json format
+        # Report repeat_data in json format
         report_json = {
             "Report_ID": self.index,
             "Time_Point": time_point,
@@ -149,12 +161,14 @@ class ColonyAnalysisReport(CAVisualize, InstanceTracker):
                 for param_name in self.report_params
             },
             "Calculated_Metrics": {
+                "Log10_area": log10_area,
                 "Total_Length": total_length,
-                "Density": density
+                "Hyphal_density": hyphal_density,
+                "Tip_density": tip_density
             }
         }
 
-        # Convert data to json datatypes
+        # Convert repeat_data to json datatypes
         def json_serializer(obj):
             """Handle non-JSON types automatically"""
             if isinstance(obj, (np.integer, np.floating)):
@@ -165,45 +179,10 @@ class ColonyAnalysisReport(CAVisualize, InstanceTracker):
                 return vars(obj)
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable.")
 
-        # Append data to the run file
-        with open(run_file_path.with_suffix(".jsonl"), 'a') as file:
-            json.dump(report_json, file, default=json_serializer)
-            file.write("\n")    # New line on the end of each report (that's why jsonl instead of json)
-
-    # def formatted_report_json(self, time_point):
-    #     # Calculated metrics
-    #     total_length = [value * CellConfig.CELL_SEGMENT_LENGTH for value in self.number_of_cells]
-    #     density = [
-    #                 length / area
-    #                 if area > 0 else 0
-    #                 for length, area in zip(total_length, self.area)
-    #             ]
-    #
-    #     # Report data in json format
-    #     report_json = {
-    #         "Report_ID": self.index,
-    #         "Time_Point": time_point,
-    #         "Parameters": {
-    #             param_name: getattr(self, param_name)
-    #             for param_name in self.report_params
-    #         },
-    #         "Calculated_Metrics": {
-    #             "Total_Length": total_length,
-    #             "Density": density
-    #         }
-    #     }
-    #
-    #     def json_serializer(obj):
-    #         """Handle non-JSON types automatically"""
-    #         if isinstance(obj, (np.integer, np.floating)):
-    #             return float(obj)
-    #         elif isinstance(obj, np.ndarray):
-    #             return obj.tolist()
-    #         elif hasattr(obj, '__dict__'):
-    #             return vars(obj)
-    #         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-    #
-    #     return json.dumps(report_json, indent=4, default=json_serializer) + "\n"
+        # Append repeat_data to the run file
+        with open(repeat_file_path.with_suffix(".jsonl"), 'a') as jfile:
+            json.dump(report_json, jfile, default=json_serializer)
+            jfile.write("\n")    # New line on the end of each report (that's why jsonl instead of json)
 
     @staticmethod
     def to_string(data):

@@ -1,6 +1,6 @@
 import numpy as np
-from utils.DynamicArray import Dynamic2DArray
-from Cell_manager.Cell import Cell
+from src.utils.dynamic_array import Dynamic2DArray
+from src.organic.cell import Cell
 
 
 class Condition:

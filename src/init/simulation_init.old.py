@@ -1,17 +1,11 @@
 import numpy as np
-from Chemistry_manager.ElementalSpecies import Element
-from Chemistry_manager.ReactionChannel import Reaction
-from Event_manager.State import State
-from Event_manager.Condition import Condition
-from Event_manager.Event import Event
-from Cell_manager.Cell import Cell
-from Cell_manager.Colony import Colony
-import Cell_manager.CellAction as act
-from Space_manager.SpatialHashing import SpatialHashing
-from Space_manager.SpatialPartitioning import SpacePartition
-from utils.Colony_plotter import ColonyPlotter
-from utils.Animator import CellGrowthAnimator
-from Event_manager.Gillespie_algorithm import GillespieSimulator
+from src.chemistry import Element
+from src.chemistry import Reaction
+from src.organic.colony import Colony
+from src import organic as act
+from src.spatial import SpatialHashing
+from src.utils.colony_structure_plotter import ColonyPlotter
+from src.event import GillespieSimulator
 
 
 def init():

@@ -1,11 +1,11 @@
 import numpy as np
 from bisect import bisect_left
-from utils.DynamicArray import Dynamic2DArray
-from Cell_manager.Cell import Cell
-from Cell_manager.CellAction import Action, SwitchState
-from Chemistry_manager.ReactionChannel import Reaction
-from Event_manager.State import State
-from Event_manager.Condition import Condition
+from src.utils.dynamic_array import Dynamic2DArray
+from src.organic.cell import Cell
+from src.organic.cell_action import Action, SwitchState
+from src.chemistry.reaction import Reaction
+from src.event.state import State
+from src.event.condition import Condition
 
 
 class Event:

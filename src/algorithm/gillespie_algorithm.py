@@ -1,12 +1,12 @@
 import numpy as np
-from utils.BenchmarkTimer import Timer
-from Analysis.SimulationLogger import SimulationLogger
-from Analysis.ReportManager import ReportManager
-from utils.Animator import CellGrowthAnimator
-from Chemistry_manager.ReactionChannel import Reaction
-from Event_manager.Condition import Condition
-from Event_manager.Event import Event
-from Cell_manager.Cell import Cell
+from utils.benchmark_timer import Timer
+from utils.Analysis.SimulationLogger import SimulationLogger
+from utils.Analysis.ReportManager import ReportManager
+from utils.animator import CellGrowthAnimator
+from src.chemistry.reaction import Reaction
+from src.event.condition import Condition
+from src.event.event import Event
+from src.organic.cell import Cell
 
 
 class GillespieSimulator:
@@ -121,9 +121,9 @@ class GillespieSimulator:
         self.events[event_index].update(self.cells[cell_index])
         self.total_events += 1
 
-    @benchmark.measure_decorator("log data")
+    @benchmark.measure_decorator("log repeat_data")
     def _log_data(self):
-        """Store data in logger, reporter and animator based on set config."""
+        """Store repeat_data in logger, reporter and animator based on set config."""
         if self.logger:
             self.logger.log()
 

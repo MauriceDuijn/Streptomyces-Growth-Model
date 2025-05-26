@@ -2,8 +2,8 @@ import warnings
 import numpy as np
 from itertools import product
 
-from utils.DynamicArray import DynamicArray
-from Cell_manager.Cell import Cell
+from src.utils import DynamicArray
+from src.organic.cell import Cell
 
 
 class SpacePartition:
@@ -121,7 +121,7 @@ class SpacePartition:
 
 
 if __name__ == '__main__':
-    from utils.BenchmarkTimer import Timer
+    from src.utils import Timer
 
     timer = Timer()
     space = SpacePartition(100, 10)

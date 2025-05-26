@@ -3,11 +3,11 @@ from dataclasses import dataclass
 
 @dataclass
 class GlobalConfig:
-    RUN_NAME: str = "test_run_json_multispore_1.15"
-    RUN_REPEATS: int = 3
-    REPORT_INTERVAL: int = 6
-    END_TIME: float = 12
-    SPORE_AMOUNT: int = 5
+    RUN_NAME: str = "H48_M20_1.0"
+    RUN_REPEATS: int = 1
+    REPORT_INTERVAL: float = 6
+    END_TIME: float = 48
+    SPORE_AMOUNT: int = 20
     ERROR_TOLERANCE_SIGNIFICANCE = 3
 
 
@@ -42,15 +42,15 @@ class DivIVAConfig:
     DIVIVA_MAX_BINDINGRATE: float = 1e-1
     INITIAL_SPROUT_DIVIVA: float = 1
     SPLIT_THRESHOLD: float = 1.1
-    SPLIT_RATE: float = 10
+    SPLIT_SENSITIVITY: float = 1
     SPLIT_RATIO: float = 0.8
-    BRANCH_SPROUT_THRESHOLD = 1
-    BRANCH_SPROUT_RATE = 1
+    BRANCH_SPROUT_THRESHOLD: float = 1
+    BRANCH_SPROUT_SENSITIVITY: float = 1
 
 
 @dataclass
 class ChemicalConfig:
-    INIT_STARCH_AMOUNT: int = 1e5 / CellConfig.CELL_SEGMENT_LENGTH
+    INIT_STARCH_AMOUNT: int = 1e6 / CellConfig.CELL_SEGMENT_LENGTH
     STARCH_RATE: float = CellConfig.GROWTH_RATE / INIT_STARCH_AMOUNT  # Max cell event propensity = growth speed
 
     @classmethod
@@ -68,11 +68,11 @@ class LoggerConfig:
 
 
 class ReporterConfig:
-    TIME_POINTS = [
-            i * GlobalConfig.REPORT_INTERVAL
-            for i in range(int(GlobalConfig.END_TIME / GlobalConfig.REPORT_INTERVAL) + 1)
-        ]
-
+    SAVE_AS_JSON_FORMAT = True
+    TIME_POINTS: list[float] = [
+        i * GlobalConfig.REPORT_INTERVAL
+        for i in range(int(GlobalConfig.END_TIME / GlobalConfig.REPORT_INTERVAL) + 1)
+    ]
     POSSIBLE_PARAMETERS = [
         "min_diameter",
         "max_diameter",
@@ -83,7 +83,6 @@ class ReporterConfig:
         "area"
     ]
     ACTIVE_PARAMETERS = POSSIBLE_PARAMETERS
-    SAVE_AS_JSON_FORMAT = True
 
 
 @dataclass

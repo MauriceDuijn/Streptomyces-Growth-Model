@@ -1,6 +1,6 @@
 <!--This file is formatted in Markdown notation.-->
 # Streptomyces growth model
-The Streptomyces growth model simulates the hyphal growth patterns that are formed by the bacteria Streptomyces. Events are chosen based on the Gillespie algorithm and happen stochastically.
+The Streptomyces growth model simulates the hyphal growth patterns that are formed by the bacteria filum Streptomyces. Events are stochastically chosen based on the Gillespie algorithm.
 
 ## Table of Contents  
 - [Instalation](#instalation-id)

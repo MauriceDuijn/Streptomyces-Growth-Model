@@ -1,19 +1,19 @@
 import numpy as np
 from types import SimpleNamespace
-from init.configs import GlobalConfig, CellConfig, DivIVAConfig, ChemicalConfig, LoggerConfig, ReporterConfig, PlotterConfig
-from Analysis.SimulationLogger import SimulationLogger
-from Analysis.ReportManager import ReportManager
-from Chemistry_manager.ElementalSpecies import Element
-from Chemistry_manager.ReactionChannel import Reaction
-from Event_manager.State import State
-from Event_manager.Condition import Condition
-from Event_manager.Event import Event
-from Cell_manager.Cell import Cell
-from Cell_manager.Colony import Colony
-import Cell_manager.CellAction as CeAc
-from Space_manager.SpatialHashing import SpatialHashing
-from utils.Colony_plotter import ColonyPlotter
-from Event_manager.Gillespie_algorithm import GillespieSimulator
+from src.init.configs import GlobalConfig, CellConfig, DivIVAConfig, ChemicalConfig, LoggerConfig, ReporterConfig, PlotterConfig
+from src.utils.Analysis.SimulationLogger import SimulationLogger
+from src.utils.Analysis.ReportManager import ReportManager
+from src.chemistry.element import Element
+from src.chemistry.reaction import Reaction
+from src.event.state import State
+from src.event.condition import Condition
+from src.event.event import Event
+from src.organic.cell import Cell
+from src.organic.colony import Colony
+from src.organic import cell_action as CeAc
+from src.spatial.SpatialHashing import SpatialHashing
+from src.utils.colony_structure_plotter import ColonyPlotter
+from src.algorithm.gillespie_algorithm import GillespieSimulator
 
 
 # ---------------
@@ -125,14 +125,14 @@ def create_classes():
         CROWDING_INDEX=Condition("Crowding index", "static", "crowding_index"),
         SPLIT_FOCI=Condition("split DivIVA threshold",
                              method_name="linear", parameter="DivIVA",
-                             threshold=DivIVAConfig.SPLIT_THRESHOLD, alpha=DivIVAConfig.SPLIT_RATE),
+                             threshold=DivIVAConfig.SPLIT_THRESHOLD, alpha=DivIVAConfig.SPLIT_SENSITIVITY),
         BRANCH_SPROUT=Condition("sprout branch",
                                 method_name="linear", parameter="DivIVA",
-                                threshold=DivIVAConfig.BRANCH_SPROUT_THRESHOLD, alpha=DivIVAConfig.BRANCH_SPROUT_RATE)
+                                threshold=DivIVAConfig.BRANCH_SPROUT_THRESHOLD, alpha=DivIVAConfig.BRANCH_SPROUT_SENSITIVITY)
     )
 
     # ---------------
-    # Link data from other classes to the action class
+    # Link repeat_data from other classes to the action class
     # ---------------
     CeAc.Action.event_propensities = Event.event_propensities_array
     CeAc.Action.state_mask = State.cell_mask_array

@@ -1,7 +1,7 @@
 import numpy as np
 from math import factorial
-from utils.Instance_tracker import InstanceTracker
-from Chemistry_manager.ElementalSpecies import Element
+from src.utils.instance_tracker import InstanceTracker
+from src.chemistry.element import Element
 
 
 class Reaction(InstanceTracker):

@@ -1,8 +1,8 @@
 import numpy as np
-from utils.DynamicArray import DynamicArray
-from Space_manager.SpatialHashing import SpatialHashing
-from Cell_manager.Cell import Cell
-from Event_manager.Condition import Condition
+from src.utils.dynamic_array import DynamicArray
+from src.spatial.SpatialHashing import SpatialHashing
+from src.organic.cell import Cell
+from src.event.condition import Condition
 
 
 class Colony:

@@ -1,7 +1,7 @@
 import numpy as np
-from utils.Instance_tracker import InstanceTracker
-from utils.DynamicArray import DynamicArray, Dynamic2DArray
-from Event_manager.State import State
+from src.utils.instance_tracker import InstanceTracker
+from src.utils.dynamic_array import DynamicArray, Dynamic2DArray
+from src.event.state import State
 
 
 class Cell(InstanceTracker):

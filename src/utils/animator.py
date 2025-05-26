@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
 
-from Cell_manager.Cell import Cell
-from utils.DynamicArray import DynamicArray, Dynamic2DArray
+from src.utils.dynamic_array import DynamicArray, Dynamic2DArray
 
 
 class Animator(ABC):
@@ -97,7 +96,7 @@ class CellGrowthAnimator(Animator):
             self.next_frame += self.sec_per_frame
 
     def save_snapshot(self):
-        """Stores the current run data as a snapshot, stored snapshots are used when rendering an animation"""
+        """Stores the current run repeat_data as a snapshot, stored snapshots are used when rendering an animation"""
         self.param_max = max(self.param_max, max(self.param_array.active))
         sorted_indexes = np.argsort(self.param_array.active)
         self.snapshots.append(

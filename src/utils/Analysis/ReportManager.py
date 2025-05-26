@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
-from Analysis.ColonyReport import ColonyAnalysisReport
-from Cell_manager.Colony import Colony
+from src.utils.Analysis.ColonyReport import ColonyAnalysisReport
+from src.organic.colony import Colony
 
 
 class ReportManager:
@@ -11,7 +11,6 @@ class ReportManager:
         self.tp_tracker: int = 0
         self.next_tp: float = time_points[self.tp_tracker]
         self.save_as_json: bool = save_as_json
-        self.saved_jsons: list[str] = []
 
         self.simulator = None
 
@@ -44,11 +43,11 @@ class ReportManager:
         self.simulator = simulator
         return self
 
-    def write_reports_to_run_file(self, run_dir: Path, run_number: int):
-        run_file_path: Path = run_dir / f"Run_{run_number}"
+    def write_reports_to_run_file(self, run_dir: Path, repeat_index: int):
+        repeat_file_path: Path = run_dir / f"Repeat_{repeat_index}"
         for report in self.reports:
             time_point: float = self.time_points[report.index]
             if self.save_as_json:
-                self.saved_jsons.append(report.save_as_json(run_file_path, time_point))
+                report.save_as_json(repeat_file_path, time_point)
             else:
-                report.save_as_formatted_report(run_file_path, time_point)
+                report.save_as_formatted_report(repeat_file_path, time_point)

@@ -1,5 +1,5 @@
 import numpy as np
-from Cell_manager.Cell import Cell
+from src.organic.cell import Cell
 
 
 class SpatialHashing:
@@ -67,42 +67,3 @@ class SpatialHashing:
         # dx = neighbour_positions[:, 0] - target[0]
         # dy = neighbour_positions[:, 1] - target[1]
         # return dx * dx + dy * dy
-
-
-if __name__ == '__main__':
-    from time import perf_counter
-    space_size = 100
-    sample_size = 100000
-    n_tests = 100
-    SpatialHashing.partition_size = space_size / 100
-    space = SpatialHashing()
-
-    start = perf_counter()
-    for i in range(sample_size):
-        random_point = np.random.uniform(0, space_size, size=(1, 2))
-        space.insert(Cell(random_point, random_point, 0))
-    print(f"insert {sample_size} items: ", perf_counter() - start)
-
-    all = 0
-    query = 0
-    for i in range(n_tests):
-        # New test cell
-        random_point = np.random.uniform(0, space_size, size=(1, 2))
-        test = Cell(random_point, random_point, 0)
-
-        # dist check all
-        start = perf_counter()
-        dists = np.linalg.norm(Cell.center_point_array.active - test.center, axis=1)
-        # print("all", dists.sum())
-        print(space.filter_distances(dists).sum())
-        all += perf_counter() - start
-
-        # dist check via query
-        start = perf_counter()
-        result = Cell.center_point_array[space.query(test.center), :]
-        dists = np.linalg.norm(result - test.center, axis=1)
-        # print("query", dists.sum())
-        print(space.filter_distances(dists).sum())
-        query += perf_counter() - start
-
-    print(all, query)

@@ -1,5 +1,5 @@
 import numpy as np
-from utils.DynamicArray import Dynamic2DArray
+from src.utils.dynamic_array import Dynamic2DArray
 
 
 class State:

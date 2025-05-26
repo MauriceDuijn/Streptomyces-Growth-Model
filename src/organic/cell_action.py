@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
-from utils.BenchmarkTimer import Timer
-from utils.DynamicArray import Dynamic2DArray
-from Space_manager.SpatialHashing import SpatialHashing
-from Cell_manager.Cell import Cell
-from Cell_manager.Colony import Colony
-from Event_manager.State import State
-from Event_manager.Condition import Condition
+from src.utils.benchmark_timer import Timer
+from src.utils.dynamic_array import Dynamic2DArray
+from src.spatial.SpatialHashing import SpatialHashing
+from src.organic.cell import Cell
+from src.organic.colony import Colony
+from src.event.state import State
+from src.event.condition import Condition
 
 
 action_timer = Timer()
@@ -360,4 +360,4 @@ class Transfer(DuoAction):
 
 
 if __name__ == '__main__':
-    from utils.BenchmarkTimer import Timer
+    from src.utils.benchmark_timer import Timer
