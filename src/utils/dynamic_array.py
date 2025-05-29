@@ -6,8 +6,9 @@ class DynamicArray:
 
     def __init__(self, capacity: int = 1000, data_type: np.dtype = np.float64):
         self.capacity: int = capacity
-        self.arr: np.ndarray = np.zeros(capacity, dtype=data_type)
         self.row_size: int = 0
+        self.dtype = data_type
+        self.arr: np.ndarray = self.make_empty_array()
 
     def __repr__(self):
         return str(self.active)
@@ -16,10 +17,13 @@ class DynamicArray:
         return self.row_size
 
     def __getitem__(self, index):
-        return self.active[index]
+        return self.arr[:self.row_size][index]
+
+    def get_rows(self, index):
+        return np.take(self.active, index, axis=0)
 
     def __setitem__(self, index, value):
-        self.active[index] = value
+        self.arr[:self.row_size][index] = value
 
     def __mul__(self, other):
         return self.active * other
@@ -34,6 +38,9 @@ class DynamicArray:
     @active.setter
     def active(self, value):
         self.arr[:self.row_size] = value
+
+    def make_empty_array(self):
+        return np.zeros(self.capacity, dtype=self.dtype)
 
     def update_index(self, index: int, data: np.dtype) -> None:
         self.arr[index] = data
@@ -52,10 +59,10 @@ class DynamicArray:
     def resize(self) -> None:
         """Smartly resize the array by allocating new capacity in one operation."""
         new_capacity = int(np.ceil(self.capacity * self.resize_factor))
-        new_arr = np.zeros(new_capacity, dtype=self.arr.dtype)
+        self.capacity = new_capacity
+        new_arr = self.make_empty_array()
         new_arr[:self.arr.size] = self.arr  # Copy existing repeat_data
         self.arr = new_arr
-        self.capacity = new_capacity
 
     def batch_remove(self, values: list):
         """Remove multiple items from the array."""
@@ -63,14 +70,38 @@ class DynamicArray:
         self.row_size = self.arr.size
         self.capacity = self.arr.size
 
+    @classmethod
+    def load_data(cls, values: np.ndarray):
+        if values.ndim != 1:
+            raise ValueError(f"Given array of dimensions {values.ndim} doesn't fit in a 1D Dynamic2DArray.")
+
+        darr = cls(values.shape[0], values.dtype)
+        darr.arr = values
+        darr.row_size = values.shape[0]
+
+        return darr
+
 
 class Dynamic2DArray(DynamicArray):
     def __init__(self, capacity_rows=1000, capacity_columns=0, data_type=np.float64):
-        super().__init__(capacity_rows, data_type)
         self.crows = capacity_rows
         self.ccols = capacity_columns
-        self.arr = np.zeros((capacity_rows, capacity_columns), dtype=data_type)
+        super().__init__(capacity_rows, data_type)
         self.row_size = 0
+
+    def make_empty_array(self):
+        return np.zeros((self.crows, self.ccols), dtype=self.dtype)
+
+    @classmethod
+    def load_data(cls, values: np.ndarray):
+        if values.ndim != 2:
+            raise ValueError(f"Given array of dimensions {values.ndim} doesn't fit in a 2D Dynamic2DArray.")
+
+        darr = cls(values.shape[0], values.shape[1], values.dtype)
+        darr.arr = values
+        darr.row_size = values.shape[0]
+
+        return darr
 
     @property
     def size(self):
@@ -129,21 +160,21 @@ class Dynamic2DArray(DynamicArray):
         self.arr = new_arr
 
 
-if __name__ == '__main__':
-    darr = DynamicArray()
-
-    print(darr.active)
-    for i in range(100):
-        darr.append(i)
-
-    print(darr.active)
-
-    d2arr = Dynamic2DArray()
-    d2arr.append(1)
-    d2arr.add_column()
-    print(d2arr.active)
-    for i in range(10):
-        d2arr.append((0, i + 1))
-
-    print(d2arr)
-    print(d2arr[3, 1])
+# if __name__ == '__main__':
+#     darr = DynamicArray()
+#
+#     print(darr.active)
+#     for i in range(100):
+#         darr.append(i)
+#
+#     print(darr.active)
+#
+#     d2arr = Dynamic2DArray()
+#     d2arr.append(1)
+#     d2arr.add_column()
+#     print(d2arr.active)
+#     for i in range(10):
+#         d2arr.append((0, i + 1))
+#
+#     print(d2arr)
+#     print(d2arr[3, 1])

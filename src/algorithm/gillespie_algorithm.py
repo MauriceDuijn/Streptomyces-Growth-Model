@@ -1,12 +1,14 @@
 import numpy as np
-from utils.benchmark_timer import Timer
-from utils.Analysis.SimulationLogger import SimulationLogger
-from utils.Analysis.ReportManager import ReportManager
-from utils.animator import CellGrowthAnimator
-from src.chemistry.reaction import Reaction
-from src.event.condition import Condition
-from src.event.event import Event
-from src.organic.cell import Cell
+from src.utils.benchmark_timer import Timer
+from src.utils.analysis.simulation_logger import SimulationLogger
+from src.utils.analysis.report_manager import ReportManager
+from src.utils.visual.animator import CellGrowthAnimator
+from src.algorithm.chemistry.reaction import Reaction
+from src.algorithm.event.condition import Condition
+from src.algorithm.event.event import Event
+from src.algorithm.cell_based.cell import Cell
+
+from src.algorithm.cell_based.cell_action import action_timer
 
 
 class GillespieSimulator:
@@ -20,27 +22,23 @@ class GillespieSimulator:
     def __init__(self,
                  end_time: float,
                  reaction_channels: list[Reaction],
-                 conditions: list[Condition],
-                 events: list[Event],
+                 conditions: list[Condition], events: list[Event],
                  cells: list[Cell],
-                 logger: SimulationLogger = None,
-                 reporter: ReportManager = None,
-                 animator: CellGrowthAnimator = None):
+                 logger: SimulationLogger = None, reporter: ReportManager = None, animator: CellGrowthAnimator = None):
         self.end_time: float = end_time
         self.reactions: list[Reaction] = reaction_channels
         self.conditions: list[Condition] = conditions
         self.events: list[Event] = events
         self.cells: list[Cell] = cells
+        self.logger: SimulationLogger or None = logger.set_simulator(self) if logger else logger
+        self.reporter: ReportManager or None = reporter
+        self.animator: CellGrowthAnimator or None = animator
 
         # Initialize parameters start of simulation
-        self.total_propensity = 0
-        self.total_events = 0
-        self.run_time = 0
-        self.tau = 0
-
-        self.logger = logger.set_simulator(self) if logger else logger
-        self.reporter = reporter.set_simulator(self) if reporter else reporter
-        self.animator = animator
+        self.total_propensity: float = 0
+        self.total_events: int = 0
+        self.run_time: float = 0
+        self.tau: float = 0
 
     def run(self):
         """Main loop of the Gillespie algorithm."""
@@ -92,11 +90,7 @@ class GillespieSimulator:
 
     @benchmark.measure_decorator("total_propensity")
     def _update_total_propensity(self):
-        Event.update_total_propensity()
-        self.total_propensity = Event.total_propensity
-
-    def _no_reactions_left(self):
-        return self.total_propensity == 0
+        self.total_propensity = Event.get_total_propensity()
 
     @benchmark.measure_decorator("time increase")
     def _update_time_increment(self):
@@ -117,18 +111,18 @@ class GillespieSimulator:
     @benchmark.measure_decorator("event execution")
     def _execute_event(self):
         """Pick a random weighted event and execute its action."""
-        cell_index, event_index = Event.random_cell_event_index()
+        cell_index, event_index = Event.random_cell_event_index(self.total_propensity)
         self.events[event_index].update(self.cells[cell_index])
         self.total_events += 1
 
     @benchmark.measure_decorator("log repeat_data")
     def _log_data(self):
-        """Store repeat_data in logger, reporter and animator based on set config."""
+        """Store repeat_data in logger, reporter and animator based on set configs."""
         if self.logger:
-            self.logger.log()
+            self.logger.log(self.run_time)
 
         if self.reporter:
-            self.reporter.report()
+            self.reporter.report(self.run_time)
 
         if self.animator:
             self.animator.snapshot_schedule(self.run_time)
@@ -138,7 +132,9 @@ class GillespieSimulator:
         self._log_data()
         print(f"[End simulation: {end_condition}]")
         print("[Total events]", self.total_events)
-        # self.benchmark.print_times()
+        self.benchmark.print_times()
+
+        action_timer.print_times()
 
         # if self.animator:
         #     self.animator.render(save_path="Tropism_test.1.mp4", overwrite=True)

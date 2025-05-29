@@ -15,7 +15,7 @@ class InstanceTracker:
         self.register_instance(self)
 
     @classmethod
-    def register_instance(cls, instance):
+    def register_instance(cls, instance: object):
         instance.index = cls.total
         cls.total += 1
         cls.instances.append(instance)

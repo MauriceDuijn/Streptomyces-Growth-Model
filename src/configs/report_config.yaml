@@ -1,0 +1,16 @@
+SAVE_AS_JSON_FORMAT: True
+REPORT_INTERVAL: 6
+ACTIVE_PARAMETERS:
+    - "min_diameter"
+    - "max_diameter"
+    - "number_of_cells"
+    - "num_active_cells"
+    - "max_crowding"
+    - "average_crowding"
+    - "average_propensity"
+    - "area"
+ACTIVE_METRICS:
+  - "log10_area"
+  - "total_length"
+  - "hyphal_density"
+  - "tip_density"
