@@ -1,9 +1,22 @@
-import json
-from pathlib import Path
 import matplotlib.pyplot as plt
 
 
 class ReportPlotter:
+    param_units = {
+        "min_diameter": "µm",
+        "max_diameter": "µm",
+        "number_of_cells": "amount",
+        "num_active_cells": "amount",
+        "max_crowding": "crowding index",
+        "average_crowding": "crowding index",
+        "average_propensity": "propensity",
+        "area": "µm^2",
+        "log10_area": "µm^2",
+        "total_length": "µm",
+        "hyphal_density": "µm/µm^2",
+        "tip_density": "#tips/µm"
+    }
+
     def __init__(self, config: dict, run_data: dict[str, list[dict]]):
         self.config: dict[str, dict] = config["configs"]
         self.run_data: dict[str, list[dict]] = run_data
@@ -23,24 +36,21 @@ class ReportPlotter:
         base_width = 0.9 * time_interval
         time_points = [report["Time_Point"] for report in repeat_data]
 
-        # Plot all active parameters
-        for param in parameter_names:
-            plt.figure(figsize=(10, 6))
-            violin_data = [report["Parameters"][param] for report in repeat_data]
-            self._plot_violin(violin_data, base_width, time_points)
-            plt.title(f"Parameter: {param}")
-            plt.xlabel("Time Point")
-            plt.ylabel("Value")
+        def plot_category(category_type: str, names: list[str]):
+            for name in names:
+                # print(name, self.param_units[name])
+                plt.figure(figsize=(10, 6))
+                violin_data = [report["Parameters"][name] for report in repeat_data]
+                self._plot_violin(violin_data[1:], base_width, time_points[1:])
+                formatted_name = name.replace("_", " ").title()
+                plt.title(f"{category_type.title()}: {formatted_name}", size=24)
+                plt.xlabel("Time Point", size=18)
+                plt.ylabel(self.param_units[name], size=18)
+                plt.tick_params(axis='both', which='major', labelsize=14)
+                plt.ylim(bottom=0)
 
-        # Plot all the set metrics
-        for metric in metric_names:
-            plt.figure(figsize=(10, 6))
-            violin_data = [report["Parameters"][metric] for report in repeat_data]
-            self._plot_violin(violin_data, base_width, time_points)
-            plt.title(f"Metric: {metric}")
-            plt.xlabel("Time Point")
-            plt.ylabel("Value")
-
+        plot_category("Parameter", parameter_names)
+        plot_category("Metric", metric_names)
         plt.show()
 
     @staticmethod

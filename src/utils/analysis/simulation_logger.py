@@ -1,4 +1,5 @@
-from src.configs.load_config import LoggerConfig
+from time import perf_counter
+from src.utils.load_config import LoggerConfig
 from src.algorithm.chemistry.element import Element
 from src.algorithm.chemistry.reaction import Reaction
 from src.algorithm.event.state import State
@@ -32,13 +33,17 @@ class SimulationLogger:
         self.log_states: list[LogState] = []
         self.next_log: float = 0.0
         self.log_interval: float = log_interval
+        self.real_time_start = 0
         self.simulator = None
 
     def log(self, run_time):
         """Capture the current simulation state"""
+        if self.real_time_start == 0:
+            self.real_time_start = perf_counter()
         while self.should_log(run_time):
             # Simple print statement
-            print(f"T: {run_time: <20}A0: {self.simulator.total_propensity}")
+            passed_time = perf_counter() - self.real_time_start
+            print(f"T: {run_time: <20}A0: {self.simulator.total_propensity: <20}rT: {passed_time}")
             self.increment_log_timing()
             self.make_log(run_time)
 

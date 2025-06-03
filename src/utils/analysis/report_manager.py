@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from pathlib import Path
-from src.configs.load_config import ReporterConfig
+from src.utils.load_config import ReporterConfig
 from src.utils.visual.report_plotter import ReportPlotter
 from src.utils.analysis.colony_report import ColonyAnalysisReport
 from src.algorithm.cell_based.colony import Colony

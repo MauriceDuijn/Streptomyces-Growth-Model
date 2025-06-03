@@ -1,0 +1,8 @@
+# PyCharm/IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+data/runs/*
+!data/runs
+/edit_colony_test.py

@@ -7,8 +7,9 @@ import warnings
 from pathlib import Path
 from importlib.metadata import version
 from src.utils.cell_data_manager import CellDataManager
-from src.configs.load_config import Config
+from src.utils.load_config import Config
 from src.algorithm.simulation_init import init
+from src.algorithm.gillespie_algorithm import GillespieSimulator
 from src.utils.analysis.report_manager import ReportManager
 from src.utils.analysis.colony_report import ColonyAnalysisReport
 from src.utils.visual.report_plotter import ReportPlotter
@@ -34,6 +35,7 @@ class RunManager:
 
         self.run_start: float = 0
         self.run_total_time: float = 0
+        self.simulation: GillespieSimulator = None
 
     def start(self):
         """
@@ -46,9 +48,10 @@ class RunManager:
         self.run_start = perf_counter()
         for repeat_index in range(1, self.repeats + 1):
             # Run simulation
-            simulation = init()
-            simulation.run()
-            self.save_data(simulation, repeat_index)
+            self.simulation = self.initialize_simulation()
+            self.simulation.run()
+
+            self.save_data(repeat_index)
         self.run_total_time = perf_counter() - self.run_start
 
         # Save config
@@ -56,24 +59,45 @@ class RunManager:
             self.save_config()
             self.save_config_json()
 
-    def save_data(self, simulation, repeat_index):
+    @staticmethod
+    def initialize_simulation():
+        return init()
+
+    def save_data(self, repeat_index):
         if not self.name == "":
             repeat_path = self.get_repeat_path(repeat_index)
-            self.save_report(simulation.reporter, repeat_path)
+            self.save_report(self.simulation.reporter, repeat_path)
             self.save_simulation_state(repeat_path)
 
     def get_repeat_path(self, repeat_index):
         repeat_dir = self.current_run_dir / f"Repeat_{repeat_index}"
-        os.makedirs(repeat_dir)
+        os.makedirs(repeat_dir, exist_ok=True)
         return self.current_run_dir / f"Repeat_{repeat_index}" / f"Repeat_{repeat_index}"
 
     def plot_run(self, repeat_index=None):
+        # Ask the user for plot confirmation
+        # if not self.should_plot_run():
+        #     return
+
         if self.name == "":
             return warnings.warn("No run data available. Run name is empty.\n"
                                  "Replace the run name for existing run and then plot.")
 
-        self.plotter = ReportManager.create_plotter(self.current_run_dir)
+        # Initiate plotter with run data
+        if not self.plotter:
+            self.plotter = ReportManager.create_plotter(self.current_run_dir)
+
         self.plotter.plot_run(repeat_index=repeat_index)
+
+    @staticmethod
+    def should_plot_run():
+        while (answer := input("Do you want to plot the current run? [Y/N]")).lower() not in ["y", "n"]:
+            print("Invalid input. Type in single character.")
+
+        if answer.lower() == "y":
+            return True
+        elif answer.lower() == "n":
+            return False
 
     def make_run_directory(self):
         """
@@ -162,8 +186,7 @@ class RunManager:
         reporter.write_reports_to_run_file(repeat_path)
         ColonyAnalysisReport.reset_class()
 
-    @staticmethod
-    def save_simulation_state(repeat_path: Path):
+    def save_simulation_state(self, repeat_path: Path):
         """
         Stores the end state of the cells and colonies.
         Stored data can be loaded in for extending a run.
@@ -172,6 +195,11 @@ class RunManager:
         """
         cdm = CellDataManager(repeat_path)
         cdm.save_cell_simulation_data()
+
+    def load_cell_data(self, repeat_ind: int):
+        repeat_path: Path = self.get_repeat_path(repeat_ind)
+        cdm = CellDataManager(repeat_path)
+        cdm.load_all_simulation_data()
 
     @staticmethod
     def get_class_vars(config_class):

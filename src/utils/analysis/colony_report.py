@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.spatial import ConvexHull
+from scipy.spatial.distance import cdist
 from pathlib import Path
 import json
-from src.configs.load_config import Config
+from src.utils.load_config import Config
 from src.utils.instance_tracker import InstanceTracker
 from src.utils.visual.colony_analysis_plotter import CAVisualize
 from src.algorithm.cell_based.colony import Colony
@@ -74,8 +75,10 @@ class ColonyAnalysisReport(CAVisualize, InstanceTracker):
 
         # Morphology repeat_data
         points = colony.cell_points
+        # area, min_dim, max_dim = self.calc_hull(points)
         self.area.append(self.calc_area(points))
         min_dim, max_dim, projected = self.calc_diameter(points)
+        # self.area.append(area)
         self.min_diameter.append(min_dim)
         self.max_diameter.append(max_dim)
         self.pca_projection.append(projected)
@@ -88,6 +91,23 @@ class ColonyAnalysisReport(CAVisualize, InstanceTracker):
         hull = ConvexHull(points)
         area = hull.volume  # 2D volume = area
         return area
+
+    @staticmethod
+    def minimal_distance(hull):
+        min_dist = np.inf
+        for simplex in hull.simplices:
+            # Get two points on the simplex (edge)
+            p1, p2 = hull.points[simplex[0]], hull.points[simplex[1]]
+            edge_length = np.linalg.norm(p1 - p2)
+            if edge_length < min_dist:
+                min_dist = edge_length
+        return min_dist
+
+    @staticmethod
+    def maximum_distance(hull):
+        points = hull.points[hull.vertices]
+        pairwise_distances = cdist(points, points)
+        return np.max(pairwise_distances)
 
     @staticmethod
     def calc_diameter(points: np.ndarray) -> (float, float, np.ndarray):

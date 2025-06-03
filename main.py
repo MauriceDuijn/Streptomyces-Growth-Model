@@ -12,12 +12,10 @@ def main() -> None:
     # Run a simulation run based on configs
     run_manager.start()
 
-    # Show run analysis plots
-    while (answer := input("Do you want to plot the current run? [Y/N]")).lower() not in ["y", "n"]:
-        print("Invalid input. Type in single character.")
+    run_manager.simulation.plotter.plot_cells_2D_colony(0, "crowding_index")
 
-    if answer.lower() == "y":
-        run_manager.plot_run(1)
+    # Show run analysis plots
+    run_manager.plot_run(1)
 
     # run_manager.initialize_simulation()
     # run_manager.load_repeat_data(run_manager.get_repeat_path(0))

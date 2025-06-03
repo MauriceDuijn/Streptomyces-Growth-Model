@@ -1,8 +1,6 @@
 import numpy as np
 from types import SimpleNamespace
-
-from src.configs.load_config import Config
-
+from src.utils.load_config import Config
 from src.utils.analysis.simulation_logger import SimulationLogger
 from src.utils.analysis.report_manager import ReportManager
 from src.algorithm.chemistry.element import Element
@@ -16,12 +14,19 @@ from src.algorithm.cell_based.colony import Colony
 from src.algorithm.spatial.spatial_hashing import SpatialHashing
 from src.utils.visual.colony_structure_plotter import ColonyPlotter
 from src.algorithm.gillespie_algorithm import GillespieSimulator
+from src.utils.visual.animator import CellGrowthAnimator
 
 
 # ---------------
 # Main simulation initialize
 # ---------------
-def init():
+def init() -> GillespieSimulator:
+    """
+    Simulation initializer based on the Config class.
+    Specific relations of states, conditions and events are defined here.
+
+    :return GillespieSimulator: Simulation object that uses the Gillespie algorithm
+    """
     # Create initial classes based on the configs
     reset_classes()     # In case there is some data remaining from a previouse repeat
     config = Config()   # Initialize central config class
@@ -45,6 +50,7 @@ def init():
                                     Cell.instances,
                                     logger=logger,
                                     reporter=reporter,
+                                    plotter=plotter,
                                     animator=animator
                                     )
 
@@ -83,14 +89,14 @@ def create_classes(config):
     # ---------------
     # Define Elements
     # ---------------
-    elements = SimpleNamespace(
+    elements: SimpleNamespace[Element] = SimpleNamespace(
         STARCH=Element("Starch", 'S', config.chem.INIT_STARCH_AMOUNT)
     )
 
     # ---------------
     # Define Reactions
     # ---------------
-    reactions = SimpleNamespace(
+    reactions: SimpleNamespace[Reaction] = SimpleNamespace(
         CONSUME=Reaction("Consume nutriënts", config.chem.STARCH_RATE,
                          {elements.STARCH: 1}, {})
     )
@@ -98,29 +104,34 @@ def create_classes(config):
     # ---------------
     # Define States
     # ---------------
-    states = SimpleNamespace(
+    states: SimpleNamespace[State] = SimpleNamespace(
         SPORE_GERM_TUBE_1=State("Root germ tube 1"),
         SPORE_GERM_TUBE_2=State("Root germ tube 2"),
+        ROOT_DORMANT=State("Root dormant"),
         STRAIGHT=State("Straight"),
         LATERAL=State("Lateral"),
-        DORMANT=State("Dormant")
+        DORMANT=State("Dormant"),
+        IMPOSSIBLE_TO_CHANGE=State("Dummy")
     )
 
     # ---------------
     # Define Conditions
     # ---------------
-    conditions = SimpleNamespace(
+    conditions: SimpleNamespace[Condition] = SimpleNamespace(
         CROWDING_INDEX=Condition("Crowding index", "static", "crowding_index"),
         SPLIT_FOCI=Condition("split DivIVA threshold",
                              method_name="linear", parameter="DivIVA",
                              threshold=config.diviva.SPLIT_THRESHOLD, alpha=config.diviva.SPLIT_SENSITIVITY),
         BRANCH_SPROUT=Condition("sprout branch",
                                 method_name="linear", parameter="DivIVA",
-                                threshold=config.diviva.BRANCH_SPROUT_THRESHOLD, alpha=config.diviva.BRANCH_SPROUT_SENSITIVITY)
+                                threshold=config.diviva.BRANCH_SPROUT_THRESHOLD, alpha=config.diviva.BRANCH_SPROUT_SENSITIVITY),
+        FRAGMENT=Condition("fragment",
+                           method_name="linear", parameter="crowding_index",
+                           threshold=config.cell.FRAGMENT_THRESHOLD, alpha=config.cell.FRAGMENT_RATE)
     )
 
     # ---------------
-    # Link repeat_data from other classes to the action class
+    # Link run data from other classes to the action class
     # ---------------
     ce_ac.Action.event_propensities = Event.event_propensities_array
     ce_ac.Action.state_mask = State.cell_mask_array
@@ -137,13 +148,14 @@ def create_classes(config):
     # ---------------
     # Define General Actions
     # ---------------
-    general_actions = SimpleNamespace(
+    general_actions: SimpleNamespace[ce_ac.Action] = SimpleNamespace(
+        COLLECT_NEIGHBOURS=ce_ac.CollectValidNeighbours,
         SWITCH_STRAIGHT=ce_ac.SwitchState(states.STRAIGHT),
         GERMTUBE_DIVIVA=ce_ac.AddDivIVA(config.diviva.INITIAL_SPROUT_DIVIVA),
         TRANSFER_DIVIVA_ALL=ce_ac.Transfer("DivIVA", 1),
         TRANSFER_DIVIVA_SPLIT=ce_ac.Transfer("DivIVA", config.diviva.SPLIT_RATIO),
         CROWDING_INDEX=ce_ac.CrowdingIndex(conditions.CROWDING_INDEX, config.cell.CROWDING_ALPHA),
-        FRAGMENT=ce_ac.Fragment(stump_state=states.SPORE_GERM_TUBE_2)
+        FRAGMENT=ce_ac.Fragment(states.STRAIGHT)
     )
 
     # ---------------
@@ -157,7 +169,8 @@ def create_classes(config):
                 general_actions.GERMTUBE_DIVIVA,
                 general_actions.CROWDING_INDEX
             ],
-            dou_actions=[]
+            dou_actions=[],
+            get_neighbours=True
         ),
         SPROUT_GERMTUBE_2=ce_ac.GrowCell(
             parent_cell_actions=[],
@@ -167,6 +180,7 @@ def create_classes(config):
                 general_actions.CROWDING_INDEX
             ],
             dou_actions=[],
+            get_neighbours=True,
             bend=180
         ),
         GROW_STRAIGHT=ce_ac.GrowCell(
@@ -176,6 +190,7 @@ def create_classes(config):
                 general_actions.CROWDING_INDEX
             ],
             dou_actions=[general_actions.TRANSFER_DIVIVA_ALL],
+            get_neighbours=True
         ),
         GROW_STRAIGHT_SPLIT=ce_ac.GrowCell(
             parent_cell_actions=[],
@@ -183,7 +198,8 @@ def create_classes(config):
                 general_actions.SWITCH_STRAIGHT,
                 general_actions.CROWDING_INDEX
             ],
-            dou_actions=[general_actions.TRANSFER_DIVIVA_SPLIT]
+            dou_actions=[general_actions.TRANSFER_DIVIVA_SPLIT],
+            get_neighbours=True
         ),
         GROW_LATERAL=ce_ac.GrowCell(
             parent_cell_actions=[],
@@ -192,6 +208,7 @@ def create_classes(config):
                 general_actions.CROWDING_INDEX
             ],
             dou_actions=[general_actions.TRANSFER_DIVIVA_ALL],
+            get_neighbours=True,
             bend=90
         )
     )
@@ -211,7 +228,7 @@ def create_classes(config):
         SPROUT_GERMTUBE_2=Event(
             "Grow second germ tube",
             ingoing_states=[states.SPORE_GERM_TUBE_2],
-            outgoing_state=states.DORMANT,
+            outgoing_state=states.ROOT_DORMANT,
             conditions=[],
             action=event_actions.SPROUT_GERMTUBE_2,
             chemical_channel=reactions.CONSUME
@@ -243,8 +260,8 @@ def create_classes(config):
         # FRAGMENT=Event(
         #     "Fragment a branch into a new colony",
         #     ingoing_states=[states.DORMANT],
-        #     outgoing_state=states.DORMANT,
-        #     conditions=[],
+        #     outgoing_state=states.SPORE_GERM_TUBE_2,
+        #     conditions=[conditions.FRAGMENT],
         #     action=general_actions.FRAGMENT,
         #     chemical_channel=reactions.CONSUME
         # )

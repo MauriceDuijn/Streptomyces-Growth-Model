@@ -40,11 +40,11 @@ class Cell(InstanceTracker):
         return self.end_point_array[self.index]
 
     @property
-    def crowding_index(self) -> float:
+    def crowding(self) -> float:
         return self.crowding_index_array[self.index]
 
-    @crowding_index.setter
-    def crowding_index(self, value):
+    @crowding.setter
+    def crowding(self, value):
         self.crowding_index_array[self.index] = value
 
     @property
@@ -91,13 +91,24 @@ class Cell(InstanceTracker):
     def load_data(cls, cell_data: dict[str, int or float or list[int]]):
         """Assuming the cell array data is loaded in first."""
         cell_index = cell_data["index"]
-        return cls(cls.center_point_array[cell_index],
-                   cls.end_point_array[cell_index],
-                   cell_data["direction"],
-                   cell_data["length"],
-                   parent=cell_data["parent"],
-                   state=State.instances[cell_data["state_index"]],
-                   colony_index=cell_data["colony_index"]
-                   )
+        parent: int = cell_data["parent"]
+        if parent is not None:
+            parent: Cell = cls.instances[parent]
+        state = State.instances[cell_data["state_index"]]
+
+        new_cell = cls(
+            cls.center_point_array[cell_index],
+            cls.end_point_array[cell_index],
+            cell_data["direction"],
+            cell_data["length"],
+            parent=parent,
+            state=state,
+            colony_index=cell_data["colony_index"]
+        )
+
+        if parent is not None:
+            parent.children.append(new_cell)
+
+        return new_cell
 
 

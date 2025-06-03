@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import numpy as np
 from scipy.spatial import ConvexHull
-
 from src.algorithm.cell_based.cell import Cell
 from src.algorithm.cell_based.colony import Colony
 
@@ -26,12 +25,14 @@ class ColonyPlotter:
         self.scatter = None
         self.cb = None
 
-    def plot_cells_2D_colony(self, colony: Colony, parameter: str = None, cmap: str = "Spectral",
+    def plot_cells_2D_colony(self, colony_index: int, parameter: str = None, title: str = "Colony structure", cmap: str = "Spectral",
                              sort_values: bool = False, with_hull: bool = False):
         self.fig, self.ax = plt.subplots(dpi=self.dpi)
-        self.ax.set_title("Colony structure")
+        self.ax.set_title(title)
         self.ax.set_xlabel("X")
         self.ax.set_ylabel("Y")
+
+        colony = Colony.instances[colony_index]
 
         # Cell points
         points = colony.cell_points
@@ -85,11 +86,12 @@ class ColonyPlotter:
         self.ax.plot(closed_hull[:, 0], closed_hull[:, 1], 'r-', lw=2, label='Convex Hull')
 
     @staticmethod
-    def plot_cells_3D_crowding_index():
+    def plot_cells_3D_crowding_index(colony):
         """[concept]"""
-        x_data = Cell.center_point_array[1:, 0]
-        y_data = Cell.center_point_array[1:, 1]
-        crowding_index = Cell.crowding_index_array.active[1:]
+        points = colony.cell_points
+        x_data = points[:, 0]
+        y_data = points[:, 1]
+        crowding_index = Cell.crowding_index_array.active[colony.cell_indexes]
         crowding_index += 1
         crowding_index **= -1
 

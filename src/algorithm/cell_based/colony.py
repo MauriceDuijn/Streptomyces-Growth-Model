@@ -8,9 +8,9 @@ from src.algorithm.cell_based.cell import Cell
 class Colony(InstanceTracker):
     def __init__(self, root_cell: Cell):
         super().__init__()
-        self.root = root_cell
-        self.cell_indexes = DynamicArray(data_type=np.int32)
-        self.cell_grid = SpatialHashing()
+        self.root: Cell = root_cell
+        self.cell_indexes: DynamicArray = DynamicArray(data_type=np.int32)
+        self.cell_grid: SpatialHashing = SpatialHashing()
         self.add_cell(self.root)
 
     @property
@@ -18,7 +18,7 @@ class Colony(InstanceTracker):
         return len(self.cell_indexes)
 
     @property
-    def cell_points(self):
+    def cell_points(self) -> np.ndarray:
         return Cell.center_point_array[self.cell_indexes]
 
     def add_cell(self, cell: Cell):
@@ -30,9 +30,17 @@ class Colony(InstanceTracker):
         for cell in branch:
             self.add_cell(cell)
 
-    def remove_branch(self, branch: list[Cell]):
-        branch_ids: list[int] = [cell.index for cell in branch]
-        self.cell_indexes.batch_remove(branch_ids)
+    def remove_branch(self, branch):
+        branch_inds: list[int] = []
+        key_group: dict[tuple[int, int], list[int]] = {}
+        for cell in branch:
+            key = self.cell_grid.get_cell_key(cell.center)
+            index = cell.index
+            key_group[key] = index
+            branch_inds.append(index)
+        self.cell_indexes.batch_remove(branch_inds)
+        for grid_key, remove_inds in key_group.items():
+            self.cell_grid.grid[grid_key].batch_remove(remove_inds)
 
     @classmethod
     def get_cell_indexes(cls, colony_ind: int):

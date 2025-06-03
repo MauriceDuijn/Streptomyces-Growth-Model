@@ -2,6 +2,7 @@ import numpy as np
 from src.utils.benchmark_timer import Timer
 from src.utils.analysis.simulation_logger import SimulationLogger
 from src.utils.analysis.report_manager import ReportManager
+from src.utils.visual.colony_structure_plotter import ColonyPlotter
 from src.utils.visual.animator import CellGrowthAnimator
 from src.algorithm.chemistry.reaction import Reaction
 from src.algorithm.event.condition import Condition
@@ -24,14 +25,16 @@ class GillespieSimulator:
                  reaction_channels: list[Reaction],
                  conditions: list[Condition], events: list[Event],
                  cells: list[Cell],
-                 logger: SimulationLogger = None, reporter: ReportManager = None, animator: CellGrowthAnimator = None):
+                 logger: SimulationLogger = None, reporter: ReportManager = None,
+                 plotter: ColonyPlotter = None, animator: CellGrowthAnimator = None):
         self.end_time: float = end_time
         self.reactions: list[Reaction] = reaction_channels
         self.conditions: list[Condition] = conditions
         self.events: list[Event] = events
         self.cells: list[Cell] = cells
-        self.logger: SimulationLogger or None = logger.set_simulator(self) if logger else logger
-        self.reporter: ReportManager or None = reporter
+        self.logger: SimulationLogger = logger.set_simulator(self) if logger else logger
+        self.reporter: ReportManager = reporter
+        self.plotter: ColonyPlotter = plotter
         self.animator: CellGrowthAnimator or None = animator
 
         # Initialize parameters start of simulation

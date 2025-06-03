@@ -21,6 +21,8 @@ class CellConfig:
     ERROR_TOLERANCE: float              # Cutoff value for weak crowding values
     TROPISM_INTENSITY: float            # Strength of stimulus difference
     TROPISM_BEND_PER_MICRON: float      # Maximum bend from stimulus per µm
+    FRAGMENT_THRESHOLD: float           # Threshold for when crowding stress starts
+    FRAGMENT_RATE: float                # Rate how fast fragmentation stress kicks in
 
     # Normalize parameters by segment length
     GROWTH_RATE: float = field(init=False)
@@ -123,12 +125,12 @@ class Config:
         return cls._instance
 
     def _init_configs(self):
-        self.run: RunConfig = self._load_yaml("run_config.yaml", RunConfig)
-        self.cell: CellConfig = self._load_yaml("cell_config.yaml", CellConfig)
-        self.diviva: DivIVAConfig = self._load_yaml("DivIVA_config.yaml", DivIVAConfig)
-        self.chem: ChemicalConfig = self._load_yaml("chemical_config.yaml", ChemicalConfig)
+        self.run: RunConfig = self._load_yaml("../configs/run_config.yaml", RunConfig)
+        self.cell: CellConfig = self._load_yaml("../configs/cell_config.yaml", CellConfig)
+        self.diviva: DivIVAConfig = self._load_yaml("../configs/DivIVA_config.yaml", DivIVAConfig)
+        self.chem: ChemicalConfig = self._load_yaml("../configs/chemical_config.yaml", ChemicalConfig)
         self.log: LoggerConfig = LoggerConfig()
-        self.report: ReporterConfig = self._load_yaml("report_config.yaml", ReporterConfig)
+        self.report: ReporterConfig = self._load_yaml("../configs/report_config.yaml", ReporterConfig)
         self.plotter: PlotterConfig = PlotterConfig()
 
         self.cell.normalize()
