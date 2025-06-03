@@ -1,7 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony_2" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony_3" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony_4" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony_5" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony_6" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/Big_colony_7" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/H120_M20_r1" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/H120_M20_r2" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/H120_M20_r4" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/H72_M10_r1" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/H72_M10_r2" />
+      <excludeFolder url="file://$MODULE_DIR$/data/runs/NewBigColony" />
+    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

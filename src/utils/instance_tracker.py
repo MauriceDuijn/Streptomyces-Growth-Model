@@ -1,3 +1,6 @@
+from typing import TypeVar
+
+
 class InstanceTracker:
     """
     Tracks all the instances of a class.

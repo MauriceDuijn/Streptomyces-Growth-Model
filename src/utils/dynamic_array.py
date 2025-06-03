@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit
 
 
 class DynamicArray:
@@ -18,9 +19,6 @@ class DynamicArray:
 
     def __getitem__(self, index):
         return self.arr[:self.row_size][index]
-
-    def get_rows(self, index):
-        return np.take(self.active, index, axis=0)
 
     def __setitem__(self, index, value):
         self.arr[:self.row_size][index] = value
@@ -158,6 +156,19 @@ class Dynamic2DArray(DynamicArray):
         new_arr = np.zeros((self.crows, self.ccols), dtype=self.arr.dtype)
         new_arr[:self.row_size, :] = self.arr[:self.row_size, :]
         self.arr = new_arr
+
+    def get_points(self, indexes):
+        return self.get_points_njit(self.active, indexes)
+
+    @staticmethod
+    @njit
+    def get_points_njit(darr: np.ndarray, indexes: np.ndarray):
+        n = indexes.size
+        points = np.empty((n, darr.shape[1]), dtype=darr.dtype)
+        for i in range(n):
+            points[i] = darr[indexes[i]]
+        return points
+
 
 
 # if __name__ == '__main__':

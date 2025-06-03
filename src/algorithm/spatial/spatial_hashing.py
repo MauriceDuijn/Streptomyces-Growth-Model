@@ -69,9 +69,10 @@ from src.algorithm.cell_based.cell import Cell
 #         # return dx * dx + dy * dy
 from src.utils.dynamic_array import DynamicArray
 
+
 class SpatialHashing:
     partition_size: float = 0
-    neighbour_offsets = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
+    neighbour_offsets = np.array([(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)], np.int32)
 
     def __init__(self):
         self.grid: dict[tuple[int, int], DynamicArray] = {}
@@ -109,30 +110,3 @@ class SpatialHashing:
                 if (neighbour_cell := (x_key + dx, y_key + dy)) in self.grid
             ]
         )
-
-    @classmethod
-    def filter_distances(cls, distances: np.ndarray) -> np.ndarray:
-        return distances[distances <= cls.partition_size]
-
-    @classmethod
-    def filter_distances_batch(cls, distances_nd: np.ndarray) -> list:
-        return [distances[distances <= cls.partition_size] for distances in distances_nd]
-
-    @classmethod
-    def filter_distances_squared(cls, distances_squared: np.ndarray) -> np.ndarray:
-        return distances_squared[distances_squared <= cls.partition_size ** 2]
-
-    @classmethod
-    def calc_distances(cls, neighbour_positions: np.ndarray, target: np.ndarray) -> np.ndarray:
-        return np.linalg.norm(neighbour_positions - target, axis=1)
-
-    @classmethod
-    def calc_distances_multi(cls, neighbour_positions: np.ndarray, targets: np.ndarray) -> np.ndarray:
-        return np.linalg.norm(neighbour_positions - targets[np.newaxis, :], axis=1)
-
-    @classmethod
-    def calc_distances_squared(cls, neighbour_positions: np.ndarray, target: np.ndarray) -> np.ndarray:
-        return np.sum(np.square(neighbour_positions - target), axis=1)
-        # dx = neighbour_positions[:, 0] - target[0]
-        # dy = neighbour_positions[:, 1] - target[1]
-        # return dx * dx + dy * dy
